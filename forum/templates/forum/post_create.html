@@ -1,0 +1,9 @@
+<h1>发新帖</h1>
+<form method="post">
+  {% csrf_token %}
+  <label>标题:</label><br>
+  <input type="text" name="title" required><br>
+  <label>内容:</label><br>
+  <textarea name="content" required></textarea><br>
+  <button type="submit">提交</button>
+</form>

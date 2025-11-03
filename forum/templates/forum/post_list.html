@@ -1,0 +1,12 @@
+<h1>帖子</h1>
+<a href="{% url 'post_create' %}">发新帖</a>
+<ul>
+{% for post in posts %}
+  <li>
+    {{ post.title }} - 作者：{{ post.author }}
+    <a href="{% url 'post_detail' post.id %}">去查看</a>
+  </li>
+{% empty %}
+  <li>暂时没有帖子</li>
+{% endfor %}
+</ul>
