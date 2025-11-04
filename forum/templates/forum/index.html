@@ -4,27 +4,39 @@
 
 {% block content %}
 <h1>可打分的项目</h1>
-<ul>
-{% for item in items %}
-  <li>
-    {{ item.name }} - 平均分：{{ item.average_rating|floatformat:1 }}
-    <a href="{% url 'rate_item' item.id %}">去打分</a>
-  </li>
-{% empty %}
-  <li>暂时没有可打分项目</li>
-{% endfor %}
-</ul>
+
+<div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-4">
+  {% for item in items %}
+  <div class="col">
+    <div class="card" style="width: 18rem;">
+      <div class="card-body">
+        <h5 class="card-title">{{ item.name }} - 平均分：{{ item.average_rating|floatformat:1 }}</h5>
+        <a href="{% url 'rate_item' item.id %}" class="btn btn-primary">去打分</a>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <p>暂时没有可打分项目</p>
+  {% endfor %}
+</div>
 
 <h1>帖子</h1>
-<a href="{% url 'post_create' %}">发新帖</a>
-<ul>
-{% for post in posts %}
-  <li>
-    {{ post.title }} - 作者：{{ post.author }}
-    <a href="{% url 'post_detail' post.id %}">去查看</a>
-  </li>
-{% empty %}
-  <li>暂时没有帖子</li>
-{% endfor %}
-</ul>
+
+<a href="{% url 'post_create' %}" class="btn btn-primary mb-3">发新帖</a>
+
+<div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-4">
+  {% for post in posts %}
+  <div class="col">
+    <div class="card" style="width: 18rem;">
+      <div class="card-body">
+        <h5 class="card-title">{{ post.title }} - 作者：{{ post.author }}</h5>
+        <a href="{% url 'post_detail' post.id %}" class="btn btn-primary">去查看</a>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <p>暂时没有帖子</p>
+  {% endfor %}
+</div>
+
 {% endblock %}

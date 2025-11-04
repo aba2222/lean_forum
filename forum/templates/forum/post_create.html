@@ -6,10 +6,14 @@
 <h1>发新帖</h1>
 <form method="post">
   {% csrf_token %}
-  <label>标题:</label><br>
-  <input type="text" name="title" required><br>
-  <label>内容:</label><br>
-  <textarea name="content" required></textarea><br>
-  <button type="submit">提交</button>
+  <div class="form-floating">
+    <input class="form-control" id="floatingInput" name="title" placeholder="标题"></input>
+    <label for="floatingTextarea">标题：</label>
+  </div><br/>
+  <div class="form-floating">
+    <textarea class="form-control" name="content" placeholder="内容" id="floatingTextarea2" style="height: 400px"></textarea>
+    <label for="floatingTextarea2">内容:</label>
+  </div><br/>
+  <button type="submit" class="btn btn-primary">提交</button>
 </form>
 {% endblock %}
