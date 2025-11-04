@@ -1,3 +1,8 @@
+{% extends 'base.html' %}
+
+{% block title %}首页{% endblock %}
+
+{% block content %}
 <h1>可打分的项目</h1>
 <ul>
 {% for item in items %}
@@ -22,3 +27,4 @@
   <li>暂时没有帖子</li>
 {% endfor %}
 </ul>
+{% endblock %}

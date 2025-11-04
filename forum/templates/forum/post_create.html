@@ -1,3 +1,8 @@
+{% extends 'base.html' %}
+
+{% block title %}发新帖{% endblock %}
+
+{% block content %}
 <h1>发新帖</h1>
 <form method="post">
   {% csrf_token %}
@@ -7,3 +12,4 @@
   <textarea name="content" required></textarea><br>
   <button type="submit">提交</button>
 </form>
+{% endblock %}

@@ -1,3 +1,9 @@
+{% extends 'base.html' %}
+
+{% block title %}为 {{ item.name }} 打分{% endblock %}
+
+{% block content %}
+
 <h1>为 {{ item.name }} 打分</h1>
 <form method="post">
   {% csrf_token %}
@@ -9,3 +15,4 @@
   </select>
   <button type="submit">提交</button>
 </form>
+{% endblock %}

@@ -1,3 +1,9 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ post.title }}{% endblock %}
+
+{% block content %}
+
 <h1>{{ post.title }}</h1>
 <p>{{ post.content }}</p>
 <p>作者：{{ post.author.username }} | 时间：{{ post.created_at }}</p>
@@ -20,3 +26,6 @@
 {% else %}
 <p>请先登录才能评论。</p>
 {% endif %}
+
+
+{% endblock %}
