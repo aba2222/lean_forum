@@ -1,6 +1,8 @@
+from pyexpat.errors import messages
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth import authenticate, login
 
 from forum.models import Comment, Item, Post, Rating
 
@@ -46,3 +48,19 @@ def post_detail(request, post_id):
             return redirect('post_detail', post_id=post.id)
     comments = post.comment_set.all().order_by('created_at')
     return render(request, 'forum/post_detail.html', {'post': post, 'comments': comments})
+
+def login_view(request):
+    if request.method == 'POST':
+        username = request.POST["username"]
+        password = request.POST["password"]
+        user = authenticate(request, username=username, password=password)
+        
+        if user is not None:
+            login(request, user)
+            return redirect('index')
+        else:
+            # 返回一个“无效登录”错误消息
+            messages.error(request, '用户名或密码错误')
+            return redirect('login')  # 重定向回登录页面，保持表单和错误信息
+    else:
+        return render(request, 'forum/login.html')  # GET 请求时返回登录页面
