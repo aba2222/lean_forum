@@ -2,6 +2,8 @@
 
 {% block title %}首页{% endblock %}
 
+{% load humanize %}
+
 {% block content %}
 <h1>可打分的项目</h1>
 
@@ -30,6 +32,7 @@
     <div class="card" style="width: 18rem;">
       <div class="card-body">
         <h5 class="card-title">{{ post.title }} - 作者：{{ post.author }}</h5>
+        <p class="card-text">{{post.created_at | naturaltime}}</p>
         <a href="{% url 'post_detail' post.id %}" class="btn btn-primary">去查看</a>
       </div>
     </div>
