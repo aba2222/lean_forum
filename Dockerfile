@@ -15,6 +15,4 @@ COPY . /app/
 
 EXPOSE 8000
 
-RUN python manage.py collectstatic --noinput
-
-CMD ["gunicorn", "your_project.wsgi:application", "--bind", "0.0.0.0:8000"]
+CMD ["gunicorn", "lean_forum.wsgi:application", "--bind", "0.0.0.0:8000"]
