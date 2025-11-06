@@ -1,1 +1,1 @@
-web: gunicorn lean_forum.wsgi
+web: python manage.py migrate && gunicorn lean_forum.wsgi
