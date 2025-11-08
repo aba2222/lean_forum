@@ -115,3 +115,5 @@ def register_view(request):
 
     return render(request, 'forum/register.html')
 
+def about_view(request):
+    return render(request, "forum/about.html")
