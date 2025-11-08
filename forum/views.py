@@ -5,6 +5,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login
 from django.contrib import messages
+import markdown
 
 from forum.form import MDEditorCommentForm, MDEditorModleForm
 from forum.models import Comment, Item, Post, Rating
@@ -62,6 +63,14 @@ def post_detail(request, post_id):
             else:
                 print(forms.errors)
     comments = post.comment_set.all().order_by('created_at')
+
+    post.content = markdown.markdown(
+        post.content
+    )
+    for comment in comments:
+        comment.content = markdown.markdown(
+            comment.content
+        )
     return render(request, 'forum/post_detail.html', {'post': post, 'comments': comments, 'forms' : forms})
 
 def login_view(request):
