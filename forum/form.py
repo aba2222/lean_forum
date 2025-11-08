@@ -5,6 +5,10 @@ class MDEditorModleForm(forms.ModelForm):
     class Meta:
         model = Post
         fields = ['title', 'content']
+        labels = {
+            'title': '标题',
+            'content': '内容',
+        }
     
     def save(self, commit=True):
         self.instance.author = self.user
@@ -14,6 +18,9 @@ class MDEditorCommentForm(forms.ModelForm):
     class Meta:
         model = Comment
         fields = ['content']
+        labels = {
+            'content': '内容',
+        }
     
     def save(self, commit=True):
         self.instance.author = self.user
