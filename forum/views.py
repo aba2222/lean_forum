@@ -6,6 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login
 from django.contrib import messages
 
+from forum.form import MDEditorModleForm
 from forum.models import Comment, Item, Post, Rating
 
 # Create your views here.
@@ -34,6 +35,17 @@ def rate_item(request, item_id):
 
 @login_required
 def post_create(request):
+    forms = MDEditorModleForm()
+    if request.method == 'POST':
+        forms = MDEditorModleForm(request.POST)
+        forms.user = request.user
+        if forms.is_valid():
+            forms.save()
+            return redirect('post_list')
+        else:
+            print(forms.errors)
+    
+    return render(request, 'forum/post_create.html', {'form': forms})
     if request.method == 'POST':
         title = request.POST.get('title')
         content = request.POST.get('content')
