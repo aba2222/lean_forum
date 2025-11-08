@@ -20,8 +20,9 @@
 {% if user.is_authenticated %}
 <form method="post">
   {% csrf_token %}
-  <textarea name="content" required placeholder="写下你的评论"></textarea><br>
-  <button type="submit">发表评论</button>
+  {{ forms.media }}
+  {{ forms.as_p }}
+  <button type="submit" class="btn btn-primary">发表评论</button>
 </form>
 {% else %}
 <p>请先登录才能评论。</p>

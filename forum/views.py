@@ -6,7 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login
 from django.contrib import messages
 
-from forum.form import MDEditorModleForm
+from forum.form import MDEditorCommentForm, MDEditorModleForm
 from forum.models import Comment, Item, Post, Rating
 
 # Create your views here.
@@ -46,22 +46,23 @@ def post_create(request):
             print(forms.errors)
     
     return render(request, 'forum/post_create.html', {'form': forms})
-    if request.method == 'POST':
-        title = request.POST.get('title')
-        content = request.POST.get('content')
-        Post.objects.create(author=request.user, title=title, content=content)
-        return redirect('post_list')
-    return render(request, 'forum/post_create.html')
 
 def post_detail(request, post_id):
+    if request.user.is_authenticated:
+        forms = MDEditorCommentForm()
     post = get_object_or_404(Post, id=post_id)
     if request.method == 'POST':
         if request.user.is_authenticated:
-            content = request.POST.get('content')
-            Comment.objects.create(post=post, author=request.user, content=content)
-            return redirect('post_detail', post_id=post.id)
+            forms = MDEditorCommentForm(request.POST)
+            forms.user = request.user
+            forms.post = post
+            if forms.is_valid():
+                forms.save()
+                return redirect('post_detail', post_id=post.id)
+            else:
+                print(forms.errors)
     comments = post.comment_set.all().order_by('created_at')
-    return render(request, 'forum/post_detail.html', {'post': post, 'comments': comments})
+    return render(request, 'forum/post_detail.html', {'post': post, 'comments': comments, 'forms' : forms})
 
 def login_view(request):
     if request.method == 'POST':
