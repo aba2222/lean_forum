@@ -5,13 +5,13 @@
 {% block content %}
 
 <h1>{{ post.title }}</h1>
-<p>{{ post.content }}</p>
+{{ post.content|safe }}
 <p>作者：{{ post.author.username }} | 时间：{{ post.created_at }}</p>
 
 <h2>评论</h2>
 <ul>
 {% for comment in comments %}
-    <li>{{ comment.author.username }}: {{ comment.content }} ({{ comment.created_at }})</li>
+    <li>{{ comment.author.username }}: {{ comment.content | safe }} ({{ comment.created_at }})</li>
 {% empty %}
     <li>暂时没有评论</li>
 {% endfor %}
@@ -20,8 +20,9 @@
 {% if user.is_authenticated %}
 <form method="post">
   {% csrf_token %}
-  <textarea name="content" required placeholder="写下你的评论"></textarea><br>
-  <button type="submit">发表评论</button>
+  {{ forms.media }}
+  {{ forms.as_p }}
+  <button type="submit" class="btn btn-primary">发表评论</button>
 </form>
 {% else %}
 <p>请先登录才能评论。</p>
