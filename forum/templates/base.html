@@ -5,11 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Lean Forum{% endblock %}</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
         <div class="container-fluid">
-            <a class="navbar-brand" href="{% url 'index' %}">Lean Forum</a>
+            <a class="navbar-brand" href="{% url 'index' %}">
+                <i class="bi bi-chat-left"></i>&nbspLean Forum
+            </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="切换导航">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -18,17 +21,36 @@
                     <li class="nav-item">
                         <a class="nav-link active" href="{% url 'index' %}">首页</a>
                     </li>
+                    {% if not user.is_authenticated %}
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'login' %}">登录</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'register' %}">注册</a>
                     </li>
+                    {% endif %}
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'about' %}">关于</a>
                     </li>
                 </ul>
             </div>
+
+            {% if user.is_authenticated %}
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-person-circle"></i>&nbsp
+                    {{ user.username }}
+                </a>
+                <ul class="dropdown-menu">
+                    <li>
+                        <form action="{% url 'logout' %}" method="post">
+                            {% csrf_token %}
+                            <button type="submit" class="dropdown-item btn btn-link">登出</button>
+                        </form>
+                    </li>
+                </ul>
+            </li>
+            {% endif %}
         </div>
     </nav>
 
