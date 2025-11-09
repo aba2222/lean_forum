@@ -49,6 +49,7 @@ def post_create(request):
     return render(request, 'forum/post_create.html', {'form': forms})
 
 def post_detail(request, post_id):
+    forms = None
     if request.user.is_authenticated:
         forms = MDEditorCommentForm()
     post = get_object_or_404(Post, id=post_id)
