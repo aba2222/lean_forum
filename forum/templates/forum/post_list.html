@@ -6,7 +6,7 @@
 <h1>帖子</h1>
 <a href="{% url 'post_create' %}">发新帖</a>
 <ul>
-{% for post in posts %}
+{% for post in object_list %}
   <li>
     {{ post.title }} - 作者：{{ post.author }}
     <a href="{% url 'post_detail' post.id %}">去查看</a>
@@ -15,4 +15,22 @@
   <li>暂时没有帖子</li>
 {% endfor %}
 </ul>
+
+<div class="pagination">
+    <span class="step-links">
+        {% if page_obj.has_previous %}
+            <a href="?page=1">&laquo; 第一页</a>
+            <a href="?page={{ page_obj.previous_page_number }}">上一页</a>
+        {% endif %}
+
+        <span class="current">
+            第 {{ page_obj.number }} 页 共 {{ page_obj.paginator.num_pages }} 页
+        </span>
+
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}">下一页</a>
+            <a href="?page={{ page_obj.paginator.num_pages }}">最后一页 &raquo;</a>
+        {% endif %}
+    </span>
+</div>
 {% endblock %}
