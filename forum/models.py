@@ -6,14 +6,12 @@ from mdeditor.fields import MDTextField
 # Create your models here.
 
 class Item(models.Model):
-    name = models.CharField(max_length=50)
+    name = models.CharField(max_length=50, unique=True)
     description = MDTextField(blank=True,max_length=300)
 
     def average_rating(self):
-        ratings = self.rating_set.all()
-        if ratings.count() == 0:
-            return 0
-        return sum(r.score for r in ratings) / ratings.count()
+        avg_rating = self.rating_set.aggregate(models.Avg('score'))['score__avg']
+        return avg_rating if avg_rating is not None else 0 
 
     def __str__(self):
         return f"{self.name} (avg: {self.average_rating():.1f})"
@@ -34,6 +32,9 @@ class Post(models.Model):
 
     def __str__(self):
         return f"{self.title} by {self.author}"
+    
+    class Meta:
+        ordering = ['-created_at'] 
 
 class Comment(models.Model):
     post = models.ForeignKey(Post, on_delete=models.CASCADE)

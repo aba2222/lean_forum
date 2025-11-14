@@ -1,14 +1,15 @@
+from django.utils import timezone
 from pyexpat.errors import messages
-from django.http import HttpResponse
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login
 from django.contrib import messages
+from django.views.generic import ListView
 import markdown
 
 from forum.form import MDEditorCommentForm, MDEditorModleForm
-from forum.models import Comment, Item, Post, Rating
+from forum.models import Item, Post, Rating
 
 # Create your views here.
 
@@ -17,9 +18,14 @@ def index(request):
     posts = Post.objects.all().order_by('-created_at')[:5]
     return render(request, 'forum/index.html', {'items': items, 'posts' : posts})
 
-def post_list(request):
-    posts = Post.objects.all().order_by('-created_at')
-    return render(request, 'forum/post_list.html', {'posts': posts})
+class PostListView(ListView):
+    paginate_by = 20
+    model = Post
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["now"] = timezone.now()
+        return context
 
 @login_required
 def rate_item(request, item_id):
@@ -32,7 +38,10 @@ def rate_item(request, item_id):
             defaults={'score': score}
         )
         return redirect('index')
-    return render(request, 'forum/rate_item.html', {'item': item})
+    item.description = markdown.markdown(
+        item.description
+    )
+    return render(request, 'forum/rate_item.html', {'name': item.name,'description': item.description})
 
 @login_required
 def post_create(request):
