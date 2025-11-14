@@ -4,11 +4,16 @@
 
 {% block content %}
 
-<h1>为 {{ item.name }} 打分</h1>
+<h1>为 {{ name }} 打分</h1>
 <form method="post">
   {% csrf_token %}
+  {% autoescape off %}
+  <div class="mb-3">
+    {{ description }}
+  </div>
+  {% endautoescape %}
   <label>选择分数(1~5):</label>
-  <select name="score">
+  <select class="form-select" name="score">
     {% for i in "12345" %}
       <option value="{{ i }}">{{ i }}</option>
     {% endfor %}

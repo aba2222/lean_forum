@@ -38,7 +38,10 @@ def rate_item(request, item_id):
             defaults={'score': score}
         )
         return redirect('index')
-    return render(request, 'forum/rate_item.html', {'item': item})
+    item.description = markdown.markdown(
+        item.description
+    )
+    return render(request, 'forum/rate_item.html', {'name': item.name,'description': item.description})
 
 @login_required
 def post_create(request):
