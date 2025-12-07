@@ -1,5 +1,4 @@
 from django.utils import timezone
-from pyexpat.errors import messages
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth.decorators import login_required
@@ -8,7 +7,7 @@ from django.contrib import messages
 from django.views.generic import ListView
 import markdown
 
-from forum.form import MDEditorCommentForm, MDEditorModleForm
+from forum.form import MDEditorCommentForm, MDEditorModelForm
 from forum.models import Item, Post, Rating
 
 # Create your views here.
@@ -45,10 +44,9 @@ def rate_item(request, item_id):
 
 @login_required
 def post_create(request):
-    forms = MDEditorModleForm()
+    forms = MDEditorModelForm(user=request.user)
     if request.method == 'POST':
-        forms = MDEditorModleForm(request.POST)
-        forms.user = request.user
+        forms = MDEditorModelForm(request.POST, user=request.user)
         if forms.is_valid():
             forms.save()
             return redirect('post_list')
@@ -58,13 +56,13 @@ def post_create(request):
     return render(request, 'forum/post_create.html', {'form': forms})
 
 def post_detail(request, post_id):
+    post = get_object_or_404(Post, id=post_id)
     forms = None
     if request.user.is_authenticated:
-        forms = MDEditorCommentForm()
-    post = get_object_or_404(Post, id=post_id)
+        forms = MDEditorCommentForm(user=request.user, post=post)
     if request.method == 'POST':
         if request.user.is_authenticated:
-            forms = MDEditorCommentForm(request.POST)
+            forms = MDEditorCommentForm(request.POST,  user=request.user, post=post)
             forms.user = request.user
             forms.post = post
             if forms.is_valid():
