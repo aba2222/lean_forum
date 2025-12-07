@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.10, 3.11]
+        python-version: [3.11, 3.12]
     env:
       PYTHONUNBUFFERED: 1
       DJANGO_SETTINGS_MODULE: lean_forum.settings
