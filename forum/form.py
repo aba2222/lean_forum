@@ -1,7 +1,11 @@
 from .models import Post, Comment
 from django import forms
 
-class MDEditorModleForm(forms.ModelForm):
+class MDEditorModelForm(forms.ModelForm):
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = user
+
     class Meta:
         model = Post
         fields = ['title', 'content']
@@ -11,10 +15,19 @@ class MDEditorModleForm(forms.ModelForm):
         }
     
     def save(self, commit=True):
-        self.instance.author = self.user
-        return super().save(commit)
+        instance = super().save(commit=False)
+        if self.user:
+            instance.author = self.user
+        if commit:
+            instance.save()
+        return instance
 
 class MDEditorCommentForm(forms.ModelForm):
+    def __init__(self, *args, user=None, post=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = user
+        self.post = post
+
     class Meta:
         model = Comment
         fields = ['content']
@@ -23,6 +36,11 @@ class MDEditorCommentForm(forms.ModelForm):
         }
     
     def save(self, commit=True):
-        self.instance.author = self.user
-        self.instance.post = self.post
-        return super().save(commit)
+        instance = super().save(commit=False)
+        if self.user:
+            instance.author = self.user
+        if self.post:
+            instance.post = self.post
+        if commit:
+            instance.save()
+        return instance
