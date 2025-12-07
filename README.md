@@ -16,3 +16,5 @@ Use it:
 export DEBUG=1
 python manage.py runserver
 ```
+
+`python manage.py test` to run test.
