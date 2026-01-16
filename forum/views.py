@@ -38,7 +38,7 @@ def rate_item(request, item_id):
         )
         return redirect('index')
     item.description = markdown.markdown(
-        item.description
+        item.description, extensions=["extra", "codehilite", "toc", "tables", "fenced_code"]
     )
     return render(request, 'forum/rate_item.html', {'name': item.name,'description': item.description})
 
@@ -73,11 +73,11 @@ def post_detail(request, post_id):
     comments = post.comment_set.all().order_by('created_at')
 
     post.content = markdown.markdown(
-        post.content
+        post.content, extensions=['extra', 'codehilite', 'toc']
     )
     for comment in comments:
         comment.content = markdown.markdown(
-            comment.content
+            comment.content, extensions=['extra', 'codehilite', 'toc']
         )
     return render(request, 'forum/post_detail.html', {'post': post, 'comments': comments, 'forms' : forms})
 

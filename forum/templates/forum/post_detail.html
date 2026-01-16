@@ -4,29 +4,128 @@
 
 {% block content %}
 
-<h1>{{ post.title }}</h1>
-{{ post.content|safe }}
-<p>作者：{{ post.author.username }} | 时间：{{ post.created_at }}</p>
+<div class="post-container">
+    <h1 class="post-title">{{ post.title }}</h1>
+    
+    <div class="post-meta mb-3">
+        <small class="text-muted">
+            <i class="bi bi-person"></i> {{ post.author.username }} 
+            &nbsp; | &nbsp;
+            <i class="bi bi-calendar"></i> {{ post.created_at|date:"Y-m-d H:i" }}
+        </small>
+    </div>
 
-<h2>评论</h2>
-<ul>
-{% for comment in comments %}
-    <li>{{ comment.author.username }}: {{ comment.content | safe }} ({{ comment.created_at }})</li>
-{% empty %}
-    <li>暂时没有评论</li>
-{% endfor %}
-</ul>
+    <article class="markdown-body mb-4">
+        {{ post.content | safe }}
+    </article>
+</div>
+
+<hr class="my-4">
+
+<section class="comments-section">
+    <h2 class="mb-4">
+        <i class="bi bi-chat-left-text"></i> 评论
+        <span class="badge bg-secondary ms-2">{{ comments|length }}</span>
+    </h2>
+
+    {% if comments %}
+    <div class="comments-list">
+        {% for comment in comments %}
+        <div class="comment-item mb-3 p-3 border rounded">
+            <div class="comment-header mb-2">
+                <strong>{{ comment.author.username }}</strong>
+                <small class="text-muted float-end">{{ comment.created_at|date:"Y-m-d H:i" }}</small>
+            </div>
+            <article class="markdown-body">
+                {{ comment.content | safe }}
+            </article>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> 暂时没有评论，来发表第一条评论吧！
+    </div>
+    {% endif %}
+</section>
+
+<hr class="my-4">
 
 {% if user.is_authenticated %}
-<form method="post">
-  {% csrf_token %}
-  {{ forms.media }}
-  {{ forms.as_p }}
-  <button type="submit" class="btn btn-primary">发表评论</button>
-</form>
+<section class="comment-form-section">
+    <h3 class="mb-3">发表评论</h3>
+    <form method="post" class="comment-form">
+        {% csrf_token %}
+        {{ forms.media }}
+        {{ forms.as_p }}
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-send"></i> 发表评论
+        </button>
+    </form>
+</section>
 {% else %}
-<p>请先登录才能评论。</p>
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-circle"></i> 
+    <a href="{% url 'login' %}" class="alert-link">登录</a> 后才能评论。
+</div>
 {% endif %}
 
+<style>
+    .post-container {
+        margin-bottom: 30px;
+    }
+
+    .post-title {
+        margin-bottom: 15px;
+    }
+
+    .post-meta {
+        padding-bottom: 10px;
+        border-bottom: 1px solid #d0d7de;
+    }
+
+    .comments-list {
+        margin-bottom: 20px;
+    }
+
+    .comment-item {
+        background-color: rgba(0, 0, 0, 0.02);
+        transition: background-color 0.2s;
+    }
+
+    .comment-item:hover {
+        background-color: rgba(0, 0, 0, 0.04);
+    }
+
+    .comment-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .comment-form {
+        background-color: rgba(0, 0, 0, 0.02);
+        padding: 20px;
+        border-radius: 6px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        .post-meta {
+            border-bottom-color: #30363d;
+        }
+
+        .comment-item {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .comment-item:hover {
+            background-color: rgba(255, 255, 255, 0.08);
+        }
+
+        .comment-form {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+    }
+</style>
 
 {% endblock %}
