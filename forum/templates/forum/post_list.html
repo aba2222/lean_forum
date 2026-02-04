@@ -1,9 +1,9 @@
 {% extends 'base.html' %}
 
-{% block title %}帖子{% endblock %}
+{% block title %}所有文章{% endblock %}
 
 {% block content %}
-<h1>帖子</h1>
+<h1>所有文章</h1>
 <a href="{% url 'post_create' %}">发新帖</a>
 <ul>
 {% for post in object_list %}
