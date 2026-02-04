@@ -4,7 +4,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login
 from django.contrib import messages
-from django.views.generic import ListView
+from django.views.generic import ListView, View
 import markdown
 
 from forum.form import MDEditorCommentForm, MDEditorModelForm
@@ -81,10 +81,13 @@ def post_detail(request, post_id):
         )
     return render(request, 'forum/post_detail.html', {'post': post, 'comments': comments, 'forms' : forms})
 
-def login_view(request):
-    if request.method == 'POST':
-        username = request.POST["username"]
-        password = request.POST["password"]
+class LoginView(View):
+    def get(self, request):
+        return render(request, 'forum/login.html')  # GET 请求时返回登录页面
+
+    def post(self,request):
+        username = request.POST.get("username")
+        password = request.POST.get("password")
         user = authenticate(request, username=username, password=password)
         
         if user is not None:
@@ -94,14 +97,15 @@ def login_view(request):
             # 返回一个“无效登录”错误消息
             messages.error(request, '用户名或密码错误')
             return redirect('login')  # 重定向回登录页面，保持表单和错误信息
-    else:
-        return render(request, 'forum/login.html')  # GET 请求时返回登录页面
 
-def register_view(request):
-    if request.method == 'POST':
-        username = request.POST['username']
-        password = request.POST['password']
-        confirm_password = request.POST['confirm_password']
+class RegisterView(View):
+    def get(self, request):
+        return render(request, 'forum/register.html')
+    
+    def post(self, request):
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        confirm_password = request.POST.get('confirm_password')
 
         if password != confirm_password:
             messages.error(request, '密码不一致，请重新输入')
@@ -120,8 +124,6 @@ def register_view(request):
         except Exception as e:
             messages.error(request, f'注册失败：{str(e)}')
             return redirect('register')
-
-    return render(request, 'forum/register.html')
 
 def about_view(request):
     return render(request, "forum/about.html")
