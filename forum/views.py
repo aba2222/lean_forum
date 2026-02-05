@@ -2,9 +2,9 @@ from django.utils import timezone
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
-from django.views.generic import ListView, View
+from django.views.generic import ListView, View, UpdateView
 import markdown
 
 from forum.form import MDEditorCommentForm, MDEditorModelForm
@@ -124,6 +124,10 @@ class RegisterView(View):
         except Exception as e:
             messages.error(request, f'注册失败：{str(e)}')
             return redirect('register')
+
+def logout_view(request):
+    logout(request)
+    return redirect('login')
 
 def about_view(request):
     return render(request, "forum/about.html")
