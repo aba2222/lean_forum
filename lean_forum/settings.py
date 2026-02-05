@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.humanize',
     'mdeditor',
+    'webpush',
     'forum',
 ]
 
@@ -133,3 +134,13 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'uploads')
 MEDIA_URL = '/media/'
 
 LOGIN_URL= 'login'
+
+
+# please set your own VAPID keys here in production
+WEBPUSH_SETTINGS = {
+    "VAPID_PUBLIC_KEY": "BO2V65XdP_gUebE7mEkw8gdO0xOcCInw7NAjnjO1n1hUI0oOklzYBA4lAMIA7iU5-NkHtOM__XnhmL7DGlfcLQc",
+    "VAPID_PRIVATE_KEY":"-JvRFwRAYw4gb6nhLvCrXzEBDOoMES_QVxWibh2KFek",
+    "VAPID_ADMIN_EMAIL": "admin@example.com"
+}
+
+

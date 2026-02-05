@@ -5,9 +5,11 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
-from django.views.generic import ListView, View, UpdateView, DeleteView
+from django.views.generic import ListView, View, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin
 import markdown
+from requests import RequestException
+from webpush import send_group_notification
 
 from forum.form import MDEditorCommentForm, MDEditorModelForm
 from forum.models import Item, Post, Rating
@@ -51,6 +53,11 @@ def post_create(request):
         forms = MDEditorModelForm(request.POST, user=request.user)
         if forms.is_valid():
             forms.save()
+            payload = {"head": "Lean Forum", "body": "新帖子发布了，快去看看吧！", "url": "https://lforum.dpdns.org/posts/"}
+        try:
+            send_group_notification(group_name="webpush_new_posts", payload=payload, ttl=1000)
+        except RequestException as e:
+            #logger.warning("WebPush failed: %s", e)
             return redirect('post_list')
         else:
             print(forms.errors)
@@ -143,6 +150,11 @@ class PostDeleteView(LoginRequiredMixin, DeleteView):
     def get_queryset(self):
         qs = super().get_queryset()
         return qs.filter(author=self.request.user)
+
+@login_required
+def user_settings_view(request):
+    webpush = {"group": "webpush_new_posts" } 
+    return render(request, "forum/user_settings.html",  {"webpush" : webpush})
 
 def logout_view(request):
     logout(request)
