@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+
+{% load webpush_notifications %}
+
+{% block title %}用户设置{% endblock %}
+
+{% block extra_head %}
+    {% webpush_header %}
+{% endblock %}
+
+{% block content %}
+
+<div class="container mt-5">
+    <p>订阅 Webpush</p>
+
+    {% webpush_button with_class="btn btn-outline-info" %}
+</div>
+
+{% endblock %}
