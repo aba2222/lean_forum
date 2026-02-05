@@ -1,10 +1,12 @@
+from django.urls import reverse_lazy
 from django.utils import timezone
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
-from django.views.generic import ListView, View, UpdateView
+from django.views.generic import ListView, View, UpdateView, DeleteView
+from django.contrib.auth.mixins import LoginRequiredMixin
 import markdown
 
 from forum.form import MDEditorCommentForm, MDEditorModelForm
@@ -55,12 +57,29 @@ def post_create(request):
     
     return render(request, 'forum/post_create.html', {'form': forms})
 
-def post_detail(request, post_id):
-    post = get_object_or_404(Post, id=post_id)
-    forms = None
-    if request.user.is_authenticated:
-        forms = MDEditorCommentForm(user=request.user, post=post)
-    if request.method == 'POST':
+class PostDetailView(View):
+    def get(self, request, post_id):
+        post = get_object_or_404(Post, id=post_id)
+        forms = None
+        if request.user.is_authenticated:
+            forms = MDEditorCommentForm(user=request.user, post=post)
+        
+        comments = post.comment_set.all().order_by('created_at')
+
+        post.content = markdown.markdown(
+            post.content, extensions=['extra', 'codehilite', 'toc']
+        )
+        for comment in comments:
+            comment.content = markdown.markdown(
+                comment.content, extensions=['extra', 'codehilite', 'toc']
+            )
+        return render(request, 'forum/post_detail.html', {'post': post, 
+                                                          'comments': comments,
+                                                          'forms' : forms, 
+                                                          'can_delete' : (post.author == request.user)})
+
+    def post(self, request, post_id):
+        post = get_object_or_404(Post, id=post_id)
         if request.user.is_authenticated:
             forms = MDEditorCommentForm(request.POST,  user=request.user, post=post)
             forms.user = request.user
@@ -70,16 +89,6 @@ def post_detail(request, post_id):
                 return redirect('post_detail', post_id=post.id)
             else:
                 print(forms.errors)
-    comments = post.comment_set.all().order_by('created_at')
-
-    post.content = markdown.markdown(
-        post.content, extensions=['extra', 'codehilite', 'toc']
-    )
-    for comment in comments:
-        comment.content = markdown.markdown(
-            comment.content, extensions=['extra', 'codehilite', 'toc']
-        )
-    return render(request, 'forum/post_detail.html', {'post': post, 'comments': comments, 'forms' : forms})
 
 class LoginView(View):
     def get(self, request):
@@ -124,6 +133,16 @@ class RegisterView(View):
         except Exception as e:
             messages.error(request, f'注册失败：{str(e)}')
             return redirect('register')
+
+class PostDeleteView(LoginRequiredMixin, DeleteView):
+    login_url = "login"
+    model = Post
+    template_name_suffix = '_check_delete'
+    success_url = reverse_lazy("post_list")
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        return qs.filter(author=self.request.user)
 
 def logout_view(request):
     logout(request)
