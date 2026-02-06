@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+
+{% block title %}确认删除"{{ object }}"{% endblock %}
+
+{% block content %}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card border-danger">
+                <div class="card-body">
+                    <h5 class="card-title">删除 "{{ object }}"</h5>
+                    <form method="post">
+                        {% csrf_token %}
+                        <p>{{ object.title }} 将会永久消失!(真的很久!)</p>
+                        <p>
+                            请输入标题 <strong>{{ object.title }}</strong> 以确认删除：
+                        </p>
+                        {{ form }}
+                        <input
+                            type="text"
+                            name="confirm_title"
+                            class="form-control"
+                            required
+                            autocomplete="off"
+                        >
+                        <br/>
+                        <div class="d-grid gap-2">
+                            <input type="submit" value="确认删除" class="btn btn-danger">
+                            <a href="{% url 'post_detail' object.pk %}" class="btn btn-outline-secondary">取消</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const input = document.querySelector('input[name="confirm_title"]');
+const btn = document.querySelector('input[type="submit"]');
+btn.disabled = true;
+
+input.addEventListener("input", () => {
+    btn.disabled = input.value !== "{{ object.title }}";
+});
+</script>
+{% endblock %}
