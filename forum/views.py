@@ -7,6 +7,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.views.generic import ListView, View, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.exceptions import ObjectDoesNotExist
 import markdown
 from requests import RequestException
 from webpush import send_group_notification
@@ -56,7 +57,7 @@ def post_create(request):
             payload = {"head": "Lean Forum", "body": "新帖子发布了，快去看看吧！", "url": "https://lforum.dpdns.org/posts/"}
             try:
                 send_group_notification(group_name="webpush_new_posts", payload=payload, ttl=1000)
-            except RequestException as e:
+            except (ObjectDoesNotExist, RequestException) as e:
                 pass
             return redirect('post_list')
         else:
@@ -93,9 +94,9 @@ class PostDetailView(View):
             forms.post = post
             if forms.is_valid():
                 forms.save()
-                return redirect('post_detail', post_id=post.id)
             else:
                 print(forms.errors)
+        return redirect('post_detail', post_id=post.id)
 
 class LoginView(View):
     def get(self, request):
