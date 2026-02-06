@@ -1,11 +1,16 @@
+from django.urls import reverse_lazy
 from django.utils import timezone
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
-from django.views.generic import ListView, View
+from django.views.generic import ListView, View, DeleteView
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.exceptions import ObjectDoesNotExist
 import markdown
+from requests import RequestException
+from webpush import send_group_notification
 
 from forum.form import MDEditorCommentForm, MDEditorModelForm
 from forum.models import Item, Post, Rating
@@ -49,37 +54,49 @@ def post_create(request):
         forms = MDEditorModelForm(request.POST, user=request.user)
         if forms.is_valid():
             forms.save()
+            payload = {"head": "Lean Forum", "body": "新帖子发布了，快去看看吧！", "url": "https://lforum.dpdns.org/posts/"}
+            try:
+                send_group_notification(group_name="webpush_new_posts", payload=payload, ttl=1000)
+            except (ObjectDoesNotExist, RequestException) as e:
+                pass
             return redirect('post_list')
         else:
             print(forms.errors)
     
     return render(request, 'forum/post_create.html', {'form': forms})
 
-def post_detail(request, post_id):
-    post = get_object_or_404(Post, id=post_id)
-    forms = None
-    if request.user.is_authenticated:
-        forms = MDEditorCommentForm(user=request.user, post=post)
-    if request.method == 'POST':
+class PostDetailView(View):
+    def get(self, request, post_id):
+        post = get_object_or_404(Post, id=post_id)
+        forms = None
+        if request.user.is_authenticated:
+            forms = MDEditorCommentForm(user=request.user, post=post)
+        
+        comments = post.comment_set.all().order_by('created_at')
+
+        post.content = markdown.markdown(
+            post.content, extensions=['extra', 'codehilite', 'toc']
+        )
+        for comment in comments:
+            comment.content = markdown.markdown(
+                comment.content, extensions=['extra', 'codehilite', 'toc']
+            )
+        return render(request, 'forum/post_detail.html', {'post': post, 
+                                                          'comments': comments,
+                                                          'forms' : forms, 
+                                                          'can_delete' : (post.author == request.user)})
+
+    def post(self, request, post_id):
+        post = get_object_or_404(Post, id=post_id)
         if request.user.is_authenticated:
             forms = MDEditorCommentForm(request.POST,  user=request.user, post=post)
             forms.user = request.user
             forms.post = post
             if forms.is_valid():
                 forms.save()
-                return redirect('post_detail', post_id=post.id)
             else:
                 print(forms.errors)
-    comments = post.comment_set.all().order_by('created_at')
-
-    post.content = markdown.markdown(
-        post.content, extensions=['extra', 'codehilite', 'toc']
-    )
-    for comment in comments:
-        comment.content = markdown.markdown(
-            comment.content, extensions=['extra', 'codehilite', 'toc']
-        )
-    return render(request, 'forum/post_detail.html', {'post': post, 'comments': comments, 'forms' : forms})
+        return redirect('post_detail', post_id=post.id)
 
 class LoginView(View):
     def get(self, request):
@@ -124,6 +141,38 @@ class RegisterView(View):
         except Exception as e:
             messages.error(request, f'注册失败：{str(e)}')
             return redirect('register')
+
+class PostDeleteView(LoginRequiredMixin, DeleteView):
+    login_url = "login"
+    model = Post
+    template_name_suffix = '_check_delete'
+    success_url = reverse_lazy("post_list")
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        return qs.filter(author=self.request.user)
+
+@login_required
+def user_settings_view(request):
+    webpush = {"group": "webpush_new_posts" } 
+    return render(request, "forum/user_settings.html",  {"webpush" : webpush})
+
+@login_required
+def user_delete_view(request):
+    if request.method == 'POST':
+        password = request.POST.get('password')
+        user = authenticate(request, username=request.user.username, password=password)
+        if user is not None:
+            logout(request)
+            user.delete()
+            return redirect('index')
+        else:
+            messages.error(request, '密码错误，请重新输入')
+            return redirect('settings')
+
+def logout_view(request):
+    logout(request)
+    return redirect('login')
 
 def about_view(request):
     return render(request, "forum/about.html")

@@ -1,15 +1,17 @@
 from django.urls import path
 from . import views
-from django.contrib.auth import views as auth_views
 
 urlpatterns = [
     path('', views.index, name='index'),
     path('rate/<int:item_id>/', views.rate_item, name='rate_item'),
     path('posts/', views.PostListView.as_view(), name='post_list'),
     path('posts/create/', views.post_create, name='post_create'),
-    path('posts/<int:post_id>/', views.post_detail, name='post_detail'),
+    path('posts/<int:post_id>/', views.PostDetailView.as_view(), name='post_detail'),
+    path('posts/<int:pk>/delete/', views.PostDeleteView.as_view(), name='post_delete'),
     path('login/', views.LoginView.as_view(), name='login'),
+    path('settings/', views.user_settings_view, name='settings'),
+    path('settings/user_delete/', views.user_delete_view, name='user_delete'),
     path('register/', views.RegisterView.as_view(), name='register'),
     path('about/', views.about_view, name='about'),
-    path('logout/', auth_views.LogoutView.as_view(), name='logout'),
+    path('logout/', views.logout_view, name='logout'),
 ]
