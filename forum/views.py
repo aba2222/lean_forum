@@ -156,6 +156,19 @@ def user_settings_view(request):
     webpush = {"group": "webpush_new_posts" } 
     return render(request, "forum/user_settings.html",  {"webpush" : webpush})
 
+@login_required
+def user_delete_view(request):
+    if request.method == 'POST':
+        password = request.POST.get('password')
+        user = authenticate(request, username=request.user.username, password=password)
+        if user is not None:
+            logout(request)
+            user.delete()
+            return redirect('index')
+        else:
+            messages.error(request, '密码错误，请重新输入')
+            return redirect('settings')
+
 def logout_view(request):
     logout(request)
     return redirect('login')

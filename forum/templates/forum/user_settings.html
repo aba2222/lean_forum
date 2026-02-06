@@ -2,18 +2,97 @@
 
 {% load webpush_notifications %}
 
-{% block title %}用户设置{% endblock %}
+{% block title %}账户设置{% endblock %}
 
 {% block extra_head %}
     {% webpush_header %}
 {% endblock %}
 
 {% block content %}
-
 <div class="container mt-5">
-    <p>订阅 Webpush</p>
+    <div class="mb-4">
+        <h6 class="fw-bold mb-2">
+            <i class="bi bi-bell"></i> Web Push 通知
+        </h6>
+        <p class="text-muted small mb-3">
+            允许浏览器接收论坛的实时通知（无需打开网页）
+        </p>
+        {% webpush_button with_class="btn btn-outline-info" %}
+    </div>
 
-    {% webpush_button with_class="btn btn-outline-info" %}
+    <div class="border border-danger rounded p-3 bg-danger bg-opacity-10">
+        <h6 class="fw-bold text-danger mb-2">
+            <i class="bi bi-exclamation-triangle-fill"></i> 危险操作
+        </h6>
+
+        <p class="text-muted small">
+            删除账户将永久移除你的个人信息、帖子和评论，此操作无法恢复。
+        </p>
+        <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+        删除账户
+        </button>
+    </div>
+
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <form method="post" action="{% url 'user_delete' %}" class="modal-content">
+            {% csrf_token %}
+
+            <div class="modal-header">
+                <h5 class="modal-title text-danger">⚠ 删除账户（不可恢复）</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+                <div class="mb-3">
+                <label class="form-label">输入你的用户名</label>
+                <input type="text" id="username" name="username"
+                        class="form-control" required autocomplete="off">
+                </div>
+
+                <div class="mb-3">
+                <label class="form-label">输入确认文本 <strong>我要删除账户</strong></label>
+                <input type="text" id="confirmText" name="confirm_text"
+                        class="form-control" required>
+                </div>
+
+                <div class="mb-3">
+                <label class="form-label">密码</label>
+                <input type="password" id="password"
+                        name="password" class="form-control" required autocomplete="off">
+                </div>
+
+                <p class="text-muted small">
+                    此操作无法撤销，你发布的内容将被永久删除
+                </p>
+            </div>
+
+            <div class="modal-footer">
+                <button type="submit" id="deleteBtn"
+                        class="btn btn-danger" disabled>
+                确认删除
+                </button>
+            </div>
+            </form>
+        </div>
+    </div>
 </div>
 
+<script>
+const correctUsername = "{{ request.user.username }}";
+const correctText = "我要删除账户";
+
+const usernameInput = document.getElementById("username");
+const confirmTextInput = document.getElementById("confirmText");
+const deleteBtn = document.getElementById("deleteBtn");
+
+function checkValid() {
+    const usernameOK = usernameInput.value === correctUsername;
+    const textOK = confirmTextInput.value === correctText;
+    deleteBtn.disabled = !(usernameOK && textOK);
+}
+
+usernameInput.addEventListener("input", checkValid);
+confirmTextInput.addEventListener("input", checkValid);
+</script>
 {% endblock %}

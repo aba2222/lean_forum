@@ -79,6 +79,9 @@
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end">
                     <li>
+                        <a class="dropdown-item" href="{% url 'settings' %}">账户设置</a>
+                    </li>
+                    <li>
                         <form action="{% url 'logout' %}" method="post" class="w-100">
                             {% csrf_token %}
                             <button type="submit" class="dropdown-item">登出</button>
