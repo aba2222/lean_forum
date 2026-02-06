@@ -54,10 +54,10 @@ def post_create(request):
         if forms.is_valid():
             forms.save()
             payload = {"head": "Lean Forum", "body": "新帖子发布了，快去看看吧！", "url": "https://lforum.dpdns.org/posts/"}
-        try:
-            send_group_notification(group_name="webpush_new_posts", payload=payload, ttl=1000)
-        except RequestException as e:
-            #logger.warning("WebPush failed: %s", e)
+            try:
+                send_group_notification(group_name="webpush_new_posts", payload=payload, ttl=1000)
+            except RequestException as e:
+                pass
             return redirect('post_list')
         else:
             print(forms.errors)
