@@ -9,6 +9,7 @@ from django.views.generic import ListView, View, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ObjectDoesNotExist
 import markdown
+import bleach
 from requests import RequestException
 from webpush import send_group_notification
 
@@ -16,6 +17,18 @@ from forum.form import MDEditorCommentForm, MDEditorModelForm
 from forum.models import Item, Post, Rating
 
 # Create your views here.
+
+allowed_tags = [
+    "blockquote","b", "i", "strong", "em", "a", "p", "ul", "ol", "li",
+    "code", "pre", "h1", "h2", "h3", "h4", "h5", "h6", "hr", "img",
+    "table", "thead", "tr", "th", "tbody", "td", "sup", "dt", "dd", "dl",
+    "abbr", "div"
+]
+allowed_attrs = {
+    "a": ["href", "title"],
+    "img": ["src", "alt", "title"],
+    "div" : ["class"]
+}
 
 def index(request):
     items = Item.objects.all()
@@ -77,10 +90,14 @@ class PostDetailView(View):
         post.content = markdown.markdown(
             post.content, extensions=['extra', 'codehilite', 'toc']
         )
+        post.content = bleach.clean(post.content, tags=allowed_tags, attributes=allowed_attrs)
+
         for comment in comments:
             comment.content = markdown.markdown(
                 comment.content, extensions=['extra', 'codehilite', 'toc']
             )
+            comment.content = bleach.clean(comment.content, tags=allowed_tags, attributes=allowed_attrs)
+        
         return render(request, 'forum/post_detail.html', {'post': post, 
                                                           'comments': comments,
                                                           'forms' : forms, 
