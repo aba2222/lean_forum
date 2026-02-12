@@ -35,7 +35,8 @@ Instructions:
                 messages=[
                     {"role": "system", "content": "You are the AI (bot) of Lean Forum. Lean only means simple and colorful. Chat about life and fun. Be concise and friendly."},
                     {"role": "user", "content": prompt},
-                ]
+                ],
+                max_tokens="3000"
             )
             reply = completion.choices[0].message.content
         except Exception as e:
