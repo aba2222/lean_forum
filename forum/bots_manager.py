@@ -42,4 +42,4 @@ class BotsManager():
             )
 
 manager = BotsManager()
-manager.register_bot(ChatBot(manager=manager, name="bot", id=1))
+# manager.register_bot(ChatBot(manager=manager, name="bot", id=1))
