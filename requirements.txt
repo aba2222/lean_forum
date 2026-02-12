@@ -7,4 +7,5 @@ packaging>=25.0
 sqlparse>=0.5.3
 django-webpush>=0.3.6
 bleach>=6.3.0
+djangorestframework
 openai
