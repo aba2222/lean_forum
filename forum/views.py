@@ -23,7 +23,7 @@ allowed_tags = [
     "blockquote","b", "i", "strong", "em", "a", "p", "ul", "ol", "li",
     "code", "pre", "h1", "h2", "h3", "h4", "h5", "h6", "hr", "img",
     "table", "thead", "tr", "th", "tbody", "td", "sup", "dt", "dd", "dl",
-    "abbr", "div"
+    "abbr", "div", "br"
 ]
 allowed_attrs = {
     "a": ["href", "title"],
