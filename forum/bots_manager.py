@@ -2,7 +2,7 @@ from django.contrib.auth.models import User
 from django.db import transaction
 
 from .models import Comment
-from forum.bots.bot import BotBase
+from forum.bots.openai_chat.chat import ChatBot
 import threading
 
 class BotsManager():
@@ -19,7 +19,7 @@ class BotsManager():
         if bot is None:
             return
         
-        thread = threading.Thread(target=bot.handler, args=(post, "context"))
+        thread = threading.Thread(target=bot.handler, args=(post, post.content))
         thread.daemon = True
         thread.start()
     
@@ -36,4 +36,4 @@ class BotsManager():
             )
 
 manager = BotsManager()
-manager.register_bot(BotBase(manager=manager, name="bot", id=1))
+manager.register_bot(ChatBot(manager=manager, name="bot", id=1))
