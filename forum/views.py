@@ -15,6 +15,7 @@ from webpush import send_group_notification
 
 from forum.form import MDEditorCommentForm, MDEditorModelForm
 from forum.models import Item, Post, Rating
+from forum.bots_manager import manager
 
 # Create your views here.
 
@@ -22,7 +23,7 @@ allowed_tags = [
     "blockquote","b", "i", "strong", "em", "a", "p", "ul", "ol", "li",
     "code", "pre", "h1", "h2", "h3", "h4", "h5", "h6", "hr", "img",
     "table", "thead", "tr", "th", "tbody", "td", "sup", "dt", "dd", "dl",
-    "abbr", "div"
+    "abbr", "div", "br"
 ]
 allowed_attrs = {
     "a": ["href", "title"],
@@ -66,7 +67,12 @@ def post_create(request):
     if request.method == 'POST':
         forms = MDEditorModelForm(request.POST, user=request.user)
         if forms.is_valid():
-            forms.save()
+            post = forms.save()
+
+            mentions = forms.cleaned_data.get("mentions", [])
+            for mention in mentions:
+                manager.at_bot(mention, post)
+            
             payload = {"head": "Lean Forum", "body": "新帖子发布了，快去看看吧！", "url": "https://lforum.dpdns.org/posts/"}
             try:
                 send_group_notification(group_name="webpush_new_posts", payload=payload, ttl=1000)

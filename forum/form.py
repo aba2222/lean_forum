@@ -1,5 +1,7 @@
 from .models import Post, Comment
+
 from django import forms
+import re
 
 class MDEditorModelForm(forms.ModelForm):
     def __init__(self, *args, user=None, **kwargs):
@@ -14,6 +16,12 @@ class MDEditorModelForm(forms.ModelForm):
             'content': '内容',
         }
     
+    def clean_content(self):
+        content = self.cleaned_data["content"]
+        mentions = re.findall(r'@(\w+)', content)
+        self.cleaned_data["mentions"] = mentions
+        return content
+    
     def save(self, commit=True):
         instance = super().save(commit=False)
         if self.user:
@@ -22,6 +30,7 @@ class MDEditorModelForm(forms.ModelForm):
             instance.save()
         return instance
 
+# TODO: support @xxx
 class MDEditorCommentForm(forms.ModelForm):
     def __init__(self, *args, user=None, post=None, **kwargs):
         super().__init__(*args, **kwargs)
