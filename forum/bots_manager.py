@@ -1,7 +1,7 @@
 from django.contrib.auth.models import User
 from django.db import transaction
 
-from .models import Comment
+from .models import Comment, Post
 from forum.bots.openai_chat.chat import ChatBot
 import threading
 
@@ -19,7 +19,13 @@ class BotsManager():
         if bot is None:
             return
         
-        thread = threading.Thread(target=bot.handler, args=(post, post.content))
+        context = {"id" : post.id, 
+                   "title" : post.title,
+                   "author" : post.author, 
+                   "content" : post.content, 
+                   "created_at" : post.created_at,
+                    }
+        thread = threading.Thread(target=bot.handler, args=(context,))
         thread.daemon = True
         thread.start()
     
@@ -27,10 +33,10 @@ class BotsManager():
         self.bots[bot.name] = bot
     
     @staticmethod
-    def send_comment(post, id, message):
+    def send_comment(post_id, id, message):
         with transaction.atomic():
             Comment.objects.create(
-                post = post,
+                post = Post.objects.get(id=post_id),
                 author = User.objects.get(id=id),
                 content = message
             )

@@ -12,14 +12,32 @@ class ChatBot(BotBase):
             base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
         )
 
-    def handler(self, post, content):
-        completion = self.client.chat.completions.create(
-            # 模型列表：https://help.aliyun.com/zh/model-studio/getting-started/models
-            model="qwen-plus",
-            messages=[
-                {"role": "system", "content": "You are bot, a helpful assistant for Lean Forum (https://lforum.dpdns.org/). Help users with questions and discussions. This forum is unrelated to the Lean theorem prover."},
-                {"role": "user", "content": content},
-            ]
-        )
-        reply = completion.choices[0].message.content
-        self.manager.send_comment(post, self.id, reply)
+    def handler(self, context):
+        prompt = f"""
+Post Information(Please give a single concise reply):
+Title: {context.get("title", "")}
+Author: {context.get("author", "")}
+Created At: {context.get("create_at", "")}
+
+Content:
+{context.get("content", "")}
+
+Instructions:
+- Reply in a friendly, engaging, and lighthearted way.
+- Chat about life, fun, or general topics.
+- Keep your reply concise.
+""".strip()
+
+        try:
+            completion = self.client.chat.completions.create(
+                # 模型列表：https://help.aliyun.com/zh/model-studio/getting-started/models
+                model="qwen-plus",
+                messages=[
+                    {"role": "system", "content": "You are the AI (bot) of Lean Forum. Lean only means simple and colorful. Chat about life and fun. Be concise and friendly."},
+                    {"role": "user", "content": prompt},
+                ]
+            )
+            reply = completion.choices[0].message.content
+        except Exception as e:
+            reply = "Something wrong with the bot."
+        self.manager.send_comment(context.get("id"), self.id, reply)
