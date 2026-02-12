@@ -91,7 +91,7 @@ class PostDetailView(View):
         if request.user.is_authenticated:
             forms = MDEditorCommentForm(user=request.user, post=post)
         
-        comments = post.comment_set.all().order_by('created_at')
+        comments = post.comments.all().order_by('created_at')
 
         post.content = markdown.markdown(
             post.content, extensions=['extra', 'codehilite', 'toc']
