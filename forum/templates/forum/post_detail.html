@@ -25,7 +25,7 @@
     </div>
 
     <article class="markdown-body mb-4">
-        {{ post.content | safe }}
+        {{ post.content_html | safe }}
     </article>
 </div>
 
@@ -46,7 +46,7 @@
                 <small class="text-muted float-end">{{ comment.created_at|date:"Y-m-d H:i" }}</small>
             </div>
             <article class="markdown-body">
-                {{ comment.content | safe }}
+                {{ comment.content_html | safe }}
             </article>
         </div>
         {% endfor %}

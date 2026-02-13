@@ -7,8 +7,6 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.views.generic import ListView, View, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin
-import markdown
-import bleach
 from .utils import send_group_notification
 
 from forum.form import MDEditorCommentForm, MDEditorModelForm
@@ -16,21 +14,6 @@ from forum.models import Item, Post, Rating
 from forum.bots_manager import manager
 
 # Create your views here.
-
-allowed_tags = [
-    "blockquote","b", "i", "strong", "em", "a", "p", "ul", "ol", "li",
-    "code", "pre", "h1", "h2", "h3", "h4", "h5", "h6", "hr", "img",
-    "table", "thead", "tr", "th", "tbody", "td", "sup", "dt", "dd", "dl",
-    "abbr", "div", "br"
-]
-
-allowed_attrs = {
-    "a": ["href", "title"],
-    "img": ["src", "alt", "title"],
-    "div" : ["class"]
-}
-
-ALLOWED_PROTOCOLS = ["http", "https", "mailto"]
 
 def index(request):
     items = Item.objects.all()
@@ -58,10 +41,8 @@ def rate_item(request, item_id):
             defaults={'score': score}
         )
         return redirect('index')
-    item.description = markdown.markdown(
-        item.description, extensions=["extra", "codehilite", "toc", "tables", "fenced_code"]
-    )
-    return render(request, 'forum/rate_item.html', {'name': item.name,'description': item.description})
+
+    return render(request, 'forum/rate_item.html', {'name': item.name,'description': item.content_html})
 
 @login_required
 def post_create(request):
@@ -92,17 +73,6 @@ class PostDetailView(View):
         
         comments = post.comments.all().order_by('created_at')
 
-        post.content = markdown.markdown(
-            post.content, extensions=['extra', 'codehilite', 'toc']
-        )
-        post.content = bleach.clean(post.content, tags=allowed_tags, attributes=allowed_attrs, protocols=ALLOWED_PROTOCOLS)
-
-        for comment in comments:
-            comment.content = markdown.markdown(
-                comment.content, extensions=['extra', 'codehilite', 'toc']
-            )
-            comment.content = bleach.clean(comment.content, tags=allowed_tags, attributes=allowed_attrs, protocols=ALLOWED_PROTOCOLS)
-        
         return render(request, 'forum/post_detail.html', {'post': post, 
                                                           'comments': comments,
                                                           'forms' : forms, 
