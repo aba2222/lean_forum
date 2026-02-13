@@ -1,13 +1,12 @@
 from django.db import models
 from django.contrib.auth.models import User
 
-from mdeditor.fields import MDTextField
+from .markdown import MarkdownModel
 
 # Create your models here.
 
-class Item(models.Model):
+class Item(MarkdownModel):
     name = models.CharField(max_length=50, unique=True)
-    description = MDTextField(blank=True,max_length=300)
 
     def average_rating(self):
         avg_rating = self.rating_set.aggregate(models.Avg('score'))['score__avg']
@@ -24,10 +23,9 @@ class Rating(models.Model):
     class Meta:
         unique_together = ('user', 'item')
 
-class Post(models.Model):
+class Post(MarkdownModel):
     author = models.ForeignKey(User, on_delete=models.CASCADE)
     title = models.CharField(max_length=100)
-    content = MDTextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -36,10 +34,9 @@ class Post(models.Model):
     class Meta:
         ordering = ['-created_at'] 
 
-class Comment(models.Model):
+class Comment(MarkdownModel):
     post = models.ForeignKey(Post, related_name="comments", on_delete=models.CASCADE)
     author = models.ForeignKey(User, on_delete=models.CASCADE)
-    content = MDTextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

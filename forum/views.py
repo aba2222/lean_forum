@@ -7,29 +7,13 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.views.generic import ListView, View, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.core.exceptions import ObjectDoesNotExist
-import markdown
-import bleach
-from requests import RequestException
-from webpush import send_group_notification
+from .utils import send_group_notification
 
 from forum.form import MDEditorCommentForm, MDEditorModelForm
 from forum.models import Item, Post, Rating
 from forum.bots_manager import manager
 
 # Create your views here.
-
-allowed_tags = [
-    "blockquote","b", "i", "strong", "em", "a", "p", "ul", "ol", "li",
-    "code", "pre", "h1", "h2", "h3", "h4", "h5", "h6", "hr", "img",
-    "table", "thead", "tr", "th", "tbody", "td", "sup", "dt", "dd", "dl",
-    "abbr", "div", "br"
-]
-allowed_attrs = {
-    "a": ["href", "title"],
-    "img": ["src", "alt", "title"],
-    "div" : ["class"]
-}
 
 def index(request):
     items = Item.objects.all()
@@ -39,6 +23,7 @@ def index(request):
 class PostListView(ListView):
     paginate_by = 20
     model = Post
+    ordering = ["-created_at"]
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -50,16 +35,14 @@ def rate_item(request, item_id):
     item = get_object_or_404(Item, id=item_id)
     if request.method == 'POST':
         score = int(request.POST.get('score'))
-        rating, created = Rating.objects.update_or_create(
+        Rating.objects.update_or_create(
             user=request.user,
             item=item,
             defaults={'score': score}
         )
         return redirect('index')
-    item.description = markdown.markdown(
-        item.description, extensions=["extra", "codehilite", "toc", "tables", "fenced_code"]
-    )
-    return render(request, 'forum/rate_item.html', {'name': item.name,'description': item.description})
+
+    return render(request, 'forum/rate_item.html', {'name': item.name,'description': item.content_html})
 
 @login_required
 def post_create(request):
@@ -72,12 +55,9 @@ def post_create(request):
             mentions = forms.cleaned_data.get("mentions", [])
             for mention in mentions:
                 manager.at_bot(mention, post)
-            
-            payload = {"head": "Lean Forum", "body": "新帖子发布了，快去看看吧！", "url": "https://lforum.dpdns.org/posts/"}
-            try:
-                send_group_notification(group_name="webpush_new_posts", payload=payload, ttl=1000)
-            except (ObjectDoesNotExist, RequestException) as e:
-                pass
+
+            send_group_notification("webpush_new_posts", "新帖子发布了，快去看看吧！", "https://lforum.dpdns.org/posts/")
+
             return redirect('post_list')
         else:
             print(forms.errors)
@@ -93,17 +73,6 @@ class PostDetailView(View):
         
         comments = post.comments.all().order_by('created_at')
 
-        post.content = markdown.markdown(
-            post.content, extensions=['extra', 'codehilite', 'toc']
-        )
-        post.content = bleach.clean(post.content, tags=allowed_tags, attributes=allowed_attrs)
-
-        for comment in comments:
-            comment.content = markdown.markdown(
-                comment.content, extensions=['extra', 'codehilite', 'toc']
-            )
-            comment.content = bleach.clean(comment.content, tags=allowed_tags, attributes=allowed_attrs)
-        
         return render(request, 'forum/post_detail.html', {'post': post, 
                                                           'comments': comments,
                                                           'forms' : forms, 
