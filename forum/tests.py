@@ -12,7 +12,7 @@ class ForumTests(TestCase):
         self.username = 'testuser'
         self.password = 'pass12345'
         self.user = User.objects.create_user(self.username, password=self.password)
-        self.item = Item.objects.create(name='Item1', description='desc')
+        self.item = Item.objects.create(name='Item1', content='desc')
     
     def test_create_post(self):
         self.client.login(username=self.username, password=self.password)
