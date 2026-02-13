@@ -25,11 +25,14 @@ allowed_tags = [
     "table", "thead", "tr", "th", "tbody", "td", "sup", "dt", "dd", "dl",
     "abbr", "div", "br"
 ]
+
 allowed_attrs = {
     "a": ["href", "title"],
     "img": ["src", "alt", "title"],
     "div" : ["class"]
 }
+
+ALLOWED_PROTOCOLS = ["http", "https", "mailto"]
 
 def index(request):
     items = Item.objects.all()
@@ -39,6 +42,7 @@ def index(request):
 class PostListView(ListView):
     paginate_by = 20
     model = Post
+    ordering = ["-created_at"]
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -50,7 +54,7 @@ def rate_item(request, item_id):
     item = get_object_or_404(Item, id=item_id)
     if request.method == 'POST':
         score = int(request.POST.get('score'))
-        rating, created = Rating.objects.update_or_create(
+        Rating.objects.update_or_create(
             user=request.user,
             item=item,
             defaults={'score': score}
@@ -96,13 +100,13 @@ class PostDetailView(View):
         post.content = markdown.markdown(
             post.content, extensions=['extra', 'codehilite', 'toc']
         )
-        post.content = bleach.clean(post.content, tags=allowed_tags, attributes=allowed_attrs)
+        post.content = bleach.clean(post.content, tags=allowed_tags, attributes=allowed_attrs, protocols=ALLOWED_PROTOCOLS)
 
         for comment in comments:
             comment.content = markdown.markdown(
                 comment.content, extensions=['extra', 'codehilite', 'toc']
             )
-            comment.content = bleach.clean(comment.content, tags=allowed_tags, attributes=allowed_attrs)
+            comment.content = bleach.clean(comment.content, tags=allowed_tags, attributes=allowed_attrs, protocols=ALLOWED_PROTOCOLS)
         
         return render(request, 'forum/post_detail.html', {'post': post, 
                                                           'comments': comments,
