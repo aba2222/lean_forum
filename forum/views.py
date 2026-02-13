@@ -7,11 +7,9 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.views.generic import ListView, View, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.core.exceptions import ObjectDoesNotExist
 import markdown
 import bleach
-from requests import RequestException
-from webpush import send_group_notification
+from .utils import send_group_notification
 
 from forum.form import MDEditorCommentForm, MDEditorModelForm
 from forum.models import Item, Post, Rating
@@ -76,12 +74,9 @@ def post_create(request):
             mentions = forms.cleaned_data.get("mentions", [])
             for mention in mentions:
                 manager.at_bot(mention, post)
-            
-            payload = {"head": "Lean Forum", "body": "新帖子发布了，快去看看吧！", "url": "https://lforum.dpdns.org/posts/"}
-            try:
-                send_group_notification(group_name="webpush_new_posts", payload=payload, ttl=1000)
-            except (ObjectDoesNotExist, RequestException) as e:
-                pass
+
+            send_group_notification("webpush_new_posts", "新帖子发布了，快去看看吧！", "https://lforum.dpdns.org/posts/")
+
             return redirect('post_list')
         else:
             print(forms.errors)
