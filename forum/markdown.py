@@ -6,7 +6,7 @@ import bleach
 
 class MarkdownModel(models.Model):
     content = MDTextField()
-    content_html = models.TextField(editable=False)
+    content_html = models.TextField(editable=False, blank=True)
 
     MARKDOWN_EXTENSIONS = [
         "extra",
@@ -40,8 +40,7 @@ class MarkdownModel(models.Model):
             )
         content_html = bleach.clean(content_html, tags=self.allowed_tags, 
                                attributes=self.allowed_attrs, 
-                               protocols=self.ALLOWED_PROTOCOLS,
-                               blank=True)
+                               protocols=self.ALLOWED_PROTOCOLS)
 
         return content_html
 
