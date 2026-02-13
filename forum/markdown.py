@@ -40,7 +40,8 @@ class MarkdownModel(models.Model):
             )
         content_html = bleach.clean(content_html, tags=self.allowed_tags, 
                                attributes=self.allowed_attrs, 
-                               protocols=self.ALLOWED_PROTOCOLS)
+                               protocols=self.ALLOWED_PROTOCOLS,
+                               blank=True)
 
         return content_html
 
