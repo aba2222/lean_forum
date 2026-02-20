@@ -11,7 +11,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from .utils import send_group_notification
 
 from forum.form import MDEditorCommentForm, MDEditorModelForm
-from forum.models import Item, Post, Rating
+from forum.models import Comment, Item, Post, Rating
 from forum.bots_manager import manager
 
 # Create your views here.
@@ -152,6 +152,14 @@ class PostDeleteView(LoginRequiredMixin, DeleteView):
     def get_queryset(self):
         qs = super().get_queryset()
         return qs.filter(author=self.request.user)
+
+@login_required
+def comment_delete_view(request, comment_id):
+    comment = get_object_or_404(Comment, id=comment_id, author=request.user)
+    post_id = comment.post.id
+    if request.method == 'POST':
+        comment.delete()
+    return redirect('post_detail', post_id=post_id)
 
 @login_required
 def user_settings_view(request):
