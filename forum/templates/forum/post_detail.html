@@ -42,7 +42,7 @@
         {% for comment in comments %}
         <div class="comment-item mb-3 p-3 border rounded">
             <div class="comment-header mb-2">
-                <strong>{{ comment.author.username }}</strong>
+                <strong><small class="text-muted">#{{ forloop.counter }}</small> {{ comment.author.username }}</strong>
                 <small class="text-muted float-end">{{ comment.created_at|date:"Y-m-d H:i" }}</small>
             </div>
             <article class="markdown-body">
