@@ -8,8 +8,12 @@
     
 	<meta name="color-scheme" content="light dark">
     <script>
-        const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        document.documentElement.setAttribute('data-bs-theme', isDark ? 'dark' : 'light');
+        function getTheme() {
+            const saved = localStorage.getItem('theme');
+            if (saved === 'light' || saved === 'dark') return saved;
+            return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.setAttribute('data-bs-theme', getTheme());
     </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.8.1/github-markdown.css" integrity="sha512-Hasfm7Iv5AG2/v5DSRXetpC33VjyPBXn5giooMag2EgSbiJ2Xp4GGvYGKSvc68SiJIflF/WrbDFdNmtlZHE5HA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
@@ -33,10 +37,8 @@
         }
 
 
-			@media (prefers-color-scheme: dark) {
-				body {
-					background-color: #0d1117;
-				}
+			[data-bs-theme="dark"] body {
+				background-color: #0d1117;
 			}
     </style>
     {% block extra_head %}{% endblock %}
@@ -107,13 +109,11 @@
 
 
     <script>
-        const themeQuery = window.matchMedia('(prefers-color-scheme: dark)');
-        const setTheme = () => document.documentElement.setAttribute(
-            'data-bs-theme',
-            themeQuery.matches ? 'dark' : 'light'
-        );
-
-        themeQuery.addEventListener('change', setTheme);
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+            if (!localStorage.getItem('theme')) {
+                document.documentElement.setAttribute('data-bs-theme', getTheme());
+            }
+        });
     </script>
 </body>
 </html>
