@@ -1,3 +1,4 @@
+import re
 from django.urls import reverse_lazy
 from django.utils import timezone
 from django.contrib.auth.models import User
@@ -115,6 +116,14 @@ class RegisterView(View):
         username = request.POST.get('username')
         password = request.POST.get('password')
         confirm_password = request.POST.get('confirm_password')
+
+        if not username or not (2 <= len(username) <= 20):
+            messages.error(request, '用户名长度需在 2-20 个字符之间')
+            return redirect('register')
+
+        if not re.match(r'^[\w\u4e00-\u9fff]+$', username):
+            messages.error(request, '用户名只能包含字母、数字、下划线或中文')
+            return redirect('register')
 
         if password != confirm_password:
             messages.error(request, '密码不一致，请重新输入')
