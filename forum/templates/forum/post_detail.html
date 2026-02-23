@@ -13,6 +13,8 @@
                 <i class="bi bi-person"></i> {{ post.author.username }} 
                 &nbsp; | &nbsp;
                 <i class="bi bi-calendar"></i> {{ post.created_at|date:"Y-m-d H:i" }}
+                &nbsp; | &nbsp;
+                <i class="bi bi-eye"></i> {{ post.views }}
             </span>
             {% if can_delete %}
             <span>
