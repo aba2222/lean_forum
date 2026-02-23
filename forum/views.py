@@ -1,4 +1,5 @@
 import re, random
+from django.db.models import F
 from django.urls import reverse_lazy
 from django.utils import timezone
 from django.contrib.auth.models import User
@@ -69,6 +70,8 @@ def post_create(request):
 class PostDetailView(View):
     def get(self, request, post_id):
         post = get_object_or_404(Post, id=post_id)
+        Post.objects.filter(id=post_id).update(views=F('views') + 1)
+        post.views += 1
         forms = None
         if request.user.is_authenticated:
             forms = MDEditorCommentForm(user=request.user, post=post)

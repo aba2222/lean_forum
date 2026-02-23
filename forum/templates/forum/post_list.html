@@ -8,7 +8,7 @@
 <ul>
 {% for post in object_list %}
   <li>
-    {{ post.title }} - 作者：{{ post.author }}
+    {{ post.title }} - 作者：{{ post.author }} <small class="text-muted"><i class="bi bi-eye"></i> {{ post.views }}</small>
     <a href="{% url 'post_detail' post.id %}">去查看</a>
   </li>
 {% empty %}
