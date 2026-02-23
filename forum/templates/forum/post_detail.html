@@ -34,7 +34,7 @@
 <section class="comments-section">
     <h2 class="mb-4">
         评论
-        <span class="ms-2">({{ comments|length }})</span>
+        <span class="ms-2">({{ total_comments }})</span>
     </h2>
 
     {% if comments %}
@@ -42,7 +42,7 @@
         {% for comment in comments %}
         <div class="comment-item mb-3 p-3 border rounded">
             <div class="comment-header mb-2">
-                <strong><small class="text-muted">#{{ forloop.counter }}</small> {{ comment.author.username }}</strong>
+                <strong><small class="text-muted">#{{ page_obj.start_index|add:forloop.counter0 }}</small> {{ comment.author.username }}</strong>
                 <span>
                     <small class="text-muted">{{ comment.created_at|date:"Y-m-d H:i" }}</small>
                     {% if comment.author == request.user %}
@@ -58,6 +58,23 @@
         </div>
         {% endfor %}
     </div>
+    {% if page_obj.has_other_pages %}
+    <div class="pagination">
+        <span class="step-links">
+            {% if page_obj.has_previous %}
+                <a href="?page=1">&laquo; 第一页</a>
+                <a href="?page={{ page_obj.previous_page_number }}">上一页</a>
+            {% endif %}
+            <span class="current">
+                第 {{ page_obj.number }} 页 共 {{ page_obj.paginator.num_pages }} 页
+            </span>
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}">下一页</a>
+                <a href="?page={{ page_obj.paginator.num_pages }}">最后一页 &raquo;</a>
+            {% endif %}
+        </span>
+    </div>
+    {% endif %}
     {% else %}
     <div class="alert alert-info">
         <i class="bi bi-info-circle"></i> 暂时没有评论，来发表第一条评论吧！
