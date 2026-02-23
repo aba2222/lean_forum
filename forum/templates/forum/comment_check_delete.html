@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+
+{% block title %}确认删除评论{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card border-danger">
+                <div class="card-body">
+                    <h5 class="card-title">删除评论</h5>
+                    <p>该评论将会永久消失！(真的很久!)</p>
+                    <p>请计算 <strong>{{ a }} + {{ b }}</strong> = ?</p>
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="expected" value="{{ answer }}">
+                        <input type="text" name="answer" class="form-control" required autocomplete="off">
+                        <br/>
+                        <div class="d-grid gap-2">
+                            <input type="submit" value="确认删除" class="btn btn-danger" id="delBtn" disabled>
+                            <a href="{% url 'post_detail' comment.post.id %}" class="btn btn-outline-secondary">取消</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const input = document.querySelector('input[name="answer"]');
+const btn = document.getElementById('delBtn');
+input.addEventListener("input", () => {
+    btn.disabled = input.value !== "{{ answer }}";
+});
+</script>
+{% endblock %}
