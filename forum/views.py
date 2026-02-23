@@ -177,6 +177,24 @@ def comment_delete_view(request, comment_id):
     })
 
 @login_required
+def post_edit_view(request, post_id):
+    post = get_object_or_404(Post, id=post_id, author=request.user)
+    form = MDEditorModelForm(request.POST or None, instance=post, user=request.user)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        return redirect('post_detail', post_id=post.id)
+    return render(request, 'forum/post_edit.html', {'form': form, 'post': post})
+
+@login_required
+def comment_edit_view(request, comment_id):
+    comment = get_object_or_404(Comment, id=comment_id, author=request.user)
+    form = MDEditorCommentForm(request.POST or None, instance=comment, user=request.user, post=comment.post)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        return redirect('post_detail', post_id=comment.post.id)
+    return render(request, 'forum/comment_edit.html', {'form': form, 'comment': comment})
+
+@login_required
 def user_settings_view(request):
     webpush = {"group": "webpush_new_posts" } 
     return render(request, "forum/user_settings.html",  {"webpush" : webpush})
