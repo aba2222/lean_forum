@@ -46,12 +46,9 @@
                 <span>
                     <small class="text-muted">{{ comment.created_at|date:"Y-m-d H:i" }}</small>
                     {% if comment.author == request.user %}
-                    <form method="post" action="{% url 'comment_delete' comment_id=comment.id %}" class="d-inline ms-2" onsubmit="return confirm('确定删除这条评论吗？')">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-link btn-sm text-danger p-0" title="删除评论">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    </form>
+                    <a href="{% url 'comment_delete' comment_id=comment.id %}" class="ms-2 text-danger" title="删除评论">
+                        <i class="bi bi-trash"></i>
+                    </a>
                     {% endif %}
                 </span>
             </div>
