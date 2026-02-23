@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('forum', '0004_alter_post_options_remove_item_description_and_more'),
+        ('forum', '0003_alter_comment_content_alter_item_description_and_more'),
     ]
 
     operations = [
