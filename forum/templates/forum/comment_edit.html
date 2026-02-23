@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block title %}编辑评论{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <h3 class="mb-4">编辑评论</h3>
+            <form method="post" class="comment-form">
+                {% csrf_token %}
+                {{ form.media }}
+                {{ form.as_p }}
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-pencil-square"></i> 保存修改
+                </button>
+                <a href="{% url 'post_detail' comment.post.id %}" class="btn btn-outline-secondary ms-2">取消</a>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .comment-form {
+        background-color: rgba(0, 0, 0, 0.02);
+        padding: 20px;
+        border-radius: 6px;
+    }
+    [data-bs-theme="dark"] .comment-form {
+        background-color: rgba(255, 255, 255, 0.05);
+    }
+</style>
+{% endblock %}
