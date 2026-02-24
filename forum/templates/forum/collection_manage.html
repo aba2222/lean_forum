@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block title %}管理合集 - {{ collection.name }}{% endblock %}
+
+{% block content %}
+<h1>管理合集：{{ collection.name }}</h1>
+
+<h3 class="mt-4">当前文章</h3>
+{% if collection_posts %}
+<ul class="list-group mb-3" id="sortable-list">
+    {% for cp in collection_posts %}
+    <li class="list-group-item d-flex justify-content-between align-items-center" data-id="{{ cp.id }}">
+        <span>
+            <i class="bi bi-grip-vertical text-muted me-2" style="cursor:grab"></i>
+            <span class="badge bg-secondary me-2">{{ forloop.counter }}</span>
+            {{ cp.post.title }}
+        </span>
+        <form method="post" class="d-inline">
+            {% csrf_token %}
+            <input type="hidden" name="cp_id" value="{{ cp.id }}">
+            <button name="action" value="remove" class="btn btn-sm btn-outline-danger">
+                <i class="bi bi-x-lg"></i> 移除
+            </button>
+        </form>
+    </li>
+    {% endfor %}
+</ul>
+<p class="text-muted"><small>拖拽条目可调整顺序，松手自动保存。</small></p>
+{% else %}
+<p class="text-muted">合集中暂无文章</p>
+{% endif %}
+
+<h3 class="mt-4">添加文章</h3>
+{% if available_posts %}
+<form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="add">
+    <div class="list-group mb-3">
+        {% for post in available_posts %}
+        <label class="list-group-item d-flex align-items-center">
+            <input type="checkbox" name="post_id" value="{{ post.id }}" class="form-check-input me-2">
+            {{ post.title }}
+        </label>
+        {% endfor %}
+    </div>
+    <button type="submit" class="btn btn-primary btn-sm">批量添加</button>
+</form>
+{% else %}
+<p class="text-muted">没有可添加的文章</p>
+{% endif %}
+
+<a href="{% url 'collection_detail' collection.id %}" class="btn btn-outline-secondary mt-3">返回合集</a>
+
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
+<script>
+const list = document.getElementById('sortable-list');
+if (list) {
+    Sortable.create(list, {
+        animation: 150,
+        handle: '.bi-grip-vertical',
+        onEnd: function () {
+            const ids = [...list.querySelectorAll('li')].map(li => li.dataset.id).join(',');
+            const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            fetch('', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': csrf},
+                body: 'action=reorder&order=' + ids
+            }).then(() => {
+                list.querySelectorAll('.badge').forEach((b, i) => b.textContent = i + 1);
+            });
+        }
+    });
+}
+</script>
+{% endblock %}
