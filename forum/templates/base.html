@@ -110,7 +110,7 @@
         </div>
     </footer>
 
-    <a href="#" id="back-to-top" title="返回顶部" style="display:none;position:fixed;bottom:30px;right:30px;z-index:99;width:40px;height:40px;border-radius:50%;border:1px solid rgba(128,128,128,.3);background:var(--bs-body-bg);color:var(--bs-body-color);text-decoration:none;font-size:1.2rem;line-height:38px;text-align:center;opacity:.7;transition:opacity .3s"><i class="bi bi-arrow-up"></i></a>
+    <button id="back-to-top" title="返回顶部" class="btn position-fixed rounded-circle border d-flex align-items-center justify-content-center text-body opacity-75" style="display:none;bottom:30px;right:30px;z-index:99;width:40px;height:40px;transition:opacity .3s"><i class="bi bi-arrow-up"></i></button>
 
     <script src="https://cdn.jsdelivr.net.cn/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 
@@ -141,7 +141,7 @@
 
         const btn = document.getElementById('back-to-top');
         window.addEventListener('scroll', () => btn.style.display = window.scrollY > 300 ? 'block' : 'none');
-        btn.addEventListener('click', (e) => { e.preventDefault(); window.scrollTo({top:0,behavior:'smooth'}); });
+        btn.addEventListener('click', () => window.scrollTo({top:0,behavior:'smooth'}));
     </script>
 </body>
 </html>
