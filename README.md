@@ -46,6 +46,7 @@ source venv/bin/activate
 venv\Scripts\activate
 
 pip install -r requirements.txt
+python manage.py makemigrations
 python manage.py migrate
 
 export DEBUG=1
