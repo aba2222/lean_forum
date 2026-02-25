@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block title %}确认删除合集{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card border-danger">
+                <div class="card-body">
+                    <h5 class="card-title">删除合集 "{{ object.name }}"</h5>
+                    <form method="post">
+                        {% csrf_token %}
+                        <p>合集将被永久删除，但其中的文章不会被删除。</p>
+                        <p>请输入合集名称 <strong>{{ object.name }}</strong> 以确认：</p>
+                        <input type="text" name="confirm_name" class="form-control" required autocomplete="off">
+                        <br>
+                        <div class="d-grid gap-2">
+                            <input type="submit" value="确认删除" class="btn btn-danger" id="delete-btn" disabled>
+                            <a href="{% url 'collection_detail' object.id %}" class="btn btn-outline-secondary">取消</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const input = document.querySelector('input[name="confirm_name"]');
+const btn = document.getElementById('delete-btn');
+input.addEventListener("input", () => {
+    btn.disabled = input.value !== "{{ object.name }}";
+});
+</script>
+{% endblock %}
