@@ -51,6 +51,7 @@ venv\Scripts\activate
 pip install -r requirements.txt
 
 # 数据库迁移
+python manage.py makemigrations
 python manage.py migrate
 
 # 启动开发服务器
