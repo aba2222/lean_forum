@@ -254,7 +254,7 @@ def collection_create(request):
         if form.is_valid():
             form.save()
             return redirect('collection_list')
-    return render(request, 'forum/collection_form.html', {'form': form, 'title': '创建合集'})
+    return render(request, 'forum/collection_form.html', {'form': form})
 
 
 def collection_detail(request, collection_id):
