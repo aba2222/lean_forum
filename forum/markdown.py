@@ -5,7 +5,7 @@ import markdown
 import bleach
 
 class MarkdownModel(models.Model):
-    content = MDTextField(max_length=40000, default="default content")
+    content = MDTextField(max_length=40000)
     content_html = models.TextField(editable=False, blank=True)
 
     MARKDOWN_EXTENSIONS = [
