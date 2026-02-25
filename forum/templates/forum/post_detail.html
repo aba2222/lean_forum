@@ -5,6 +5,28 @@
 {% block content %}
 
 <div class="post-container">
+    {% if collection %}
+    <nav class="collection-nav mb-3 p-2 border rounded d-flex justify-content-between align-items-center">
+        <span>
+            {% if prev_post %}
+            <a href="{% url 'collection_post_detail' collection.id prev_post.id %}">&laquo; 上一篇</a>
+            {% endif %}
+        </span>
+        <span>
+            <i class="bi bi-collection"></i>
+            <a href="{% url 'collection_detail' collection.id %}">{{ collection.name }}</a>
+            <button class="btn btn-sm btn-outline-secondary ms-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#collectionToc" aria-controls="collectionToc" title="目录">
+                <i class="bi bi-list-ul"></i>
+            </button>
+        </span>
+        <span>
+            {% if next_post %}
+            <a href="{% url 'collection_post_detail' collection.id next_post.id %}">下一篇 &raquo;</a>
+            {% endif %}
+        </span>
+    </nav>
+    {% endif %}
+
     <h1 class="post-title">{{ post.title }}</h1>
     
     <div class="post-meta mb-3">
@@ -20,6 +42,9 @@
             <span>
                 <a href="{% url 'post_edit' post_id=post.id %}" class="text-muted me-2" title="编辑帖子">
                     <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                </a>
+                <a href="{% url 'post_add_to_collection' post_id=post.id %}" class="text-secondary me-2" title="添加到合集">
+                    <i class="bi bi-collection" aria-hidden="true"></i>
                 </a>
                 <a href="{% url 'post_delete' pk=post.id %}" class="text-danger" title="删除帖子">
                     <i class="bi bi-trash" aria-hidden="true"></i>
@@ -111,6 +136,30 @@
 </div>
 {% endif %}
 
+{% if collection %}
+<div class="offcanvas offcanvas-end" tabindex="-1" id="collectionToc" aria-labelledby="collectionTocLabel">
+    <div class="offcanvas-header">
+        <h6 class="offcanvas-title" id="collectionTocLabel">
+            <i class="bi bi-collection"></i> {{ collection.name }}
+        </h6>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="关闭"></button>
+    </div>
+    <div class="offcanvas-body p-0">
+        <ol class="list-group list-group-numbered list-group-flush">
+            {% for cp in collection_posts_all %}
+            <li class="list-group-item px-3 py-2 {% if cp.post.id == post.id %}active{% endif %}">
+                {% if cp.post.id == post.id %}
+                    {{ cp.post.title }}
+                {% else %}
+                    <a href="{% url 'collection_post_detail' collection.id cp.post.id %}" class="text-decoration-none">{{ cp.post.title }}</a>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ol>
+    </div>
+</div>
+{% endif %}
+
 <style>
     .post-container {
         margin-bottom: 30px;
@@ -163,6 +212,16 @@
 
     [data-bs-theme="dark"] .comment-form {
         background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    .collection-toc .list-group-item {
+        font-size: 0.875rem;
+        background: transparent;
+    }
+
+    .collection-toc .list-group-item.active {
+        background-color: var(--bs-primary);
+        border-color: var(--bs-primary);
     }
 </style>
 

@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ collection.name }}{% endblock %}
+
+{% block content %}
+<h1>{{ collection.name }}</h1>
+{% if collection.description_html %}
+<div class="markdown-body mb-3">{{ collection.description_html|safe }}</div>
+{% endif %}
+
+<p class="text-muted">
+  <small>创建者：{{ collection.owner.username }} · {{ collection.created_at|date:"Y-m-d" }}</small>
+</p>
+
+{% if user == collection.owner %}
+<div class="mb-3">
+  <a href="{% url 'collection_edit' collection.id %}" class="btn btn-outline-secondary btn-sm">编辑</a>
+  <a href="{% url 'collection_manage' collection.id %}" class="btn btn-outline-secondary btn-sm">管理文章</a>
+  <a href="{% url 'collection_delete' collection.id %}" class="btn btn-outline-danger btn-sm">删除</a>
+</div>
+{% endif %}
+
+<ol class="list-group list-group-numbered">
+{% for cp in collection_posts %}
+  <li class="list-group-item d-flex justify-content-between align-items-center">
+    <div>
+      <a href="{% url 'collection_post_detail' collection.id cp.post.id %}">{{ cp.post.title }}</a>
+      <small class="text-muted ms-2">{{ cp.post.author.username }}</small>
+    </div>
+    <small class="text-muted">{{ cp.post.created_at|date:"Y-m-d" }}</small>
+  </li>
+{% empty %}
+  <li class="list-group-item">合集中暂无文章</li>
+{% endfor %}
+</ol>
+{% endblock %}
