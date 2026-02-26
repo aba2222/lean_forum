@@ -10,14 +10,14 @@
   {% if item.type == 'collection' %}
   <li>
     <i class="bi bi-collection"></i>
-    <a href="{% url 'collection_detail' item.obj.id %}">{{ item.obj.name }}</a>
-    — 合集 · {{ item.obj.owner.username }}
-    · {{ item.obj.collection_posts.count }} 篇文章
+    <a href="{% url 'collection_detail' item.id %}">{{ item.name }}</a>
+    — 合集 · {{ item.owner.username }}
+    · {{ item.collection_posts.count }} 篇文章
   </li>
   {% else %}
   <li>
-    {{ item.obj.title }} - 作者：{{ item.obj.author }} <small class="text-muted"><i class="bi bi-eye"></i> {{ item.obj.views }}</small>
-    <a href="{% url 'post_detail' item.obj.id %}">去查看</a>
+    {{ item.title }} - 作者：{{ item.author.username }} <small class="text-muted"><i class="bi bi-eye"></i> {{ item.views }}</small>
+    <a href="{% url 'post_detail' item.id %}">去查看</a>
   </li>
   {% endif %}
 {% empty %}
