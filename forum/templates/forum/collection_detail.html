@@ -4,8 +4,8 @@
 
 {% block content %}
 <h1>{{ collection.name }}</h1>
-{% if collection.description_html %}
-<div class="markdown-body mb-3">{{ collection.description_html|safe }}</div>
+{% if collection.content_html %}
+<div class="markdown-body mb-3">{{ collection.content_html|safe }}</div>
 {% endif %}
 
 <p class="text-muted">
