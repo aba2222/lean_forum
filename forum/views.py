@@ -1,5 +1,5 @@
 import json, re, random
-from django.db.models import F
+from django.db.models import F, CharField, Subquery, Value
 from django.db import models as db_models
 from django.http import JsonResponse
 from django.urls import reverse_lazy
@@ -22,30 +22,51 @@ from forum.bots_manager import manager
 
 def index(request):
     items = Item.objects.all()
-    posts = Post.objects.all().order_by('-created_at')[:5]
+    posts = Post.objects.all()[:5]
     return render(request, 'forum/index.html', {'items': items, 'posts' : posts})
 
 def post_list(request):
-    # IDs of posts that belong to any collection
-    collected_post_ids = CollectionPost.objects.values_list('post_id', flat=True)
-
     # Standalone posts (not in any collection)
-    standalone_posts = [
-        {'type': 'post', 'obj': p, 'date': p.created_at}
-        for p in Post.objects.exclude(id__in=collected_post_ids)
-    ]
+    standalone_posts = Post.objects.exclude(
+        id__in = CollectionPost.objects.values_list('post_id', flat=True)  # IDs of posts that belong to any collection
+    ).annotate(
+        type=Value('post', output_field=CharField())
+    ).values("type", "id", "created_at").order_by()
 
     # Collections as items
-    collection_items = [
-        {'type': 'collection', 'obj': c, 'date': c.created_at}
-        for c in Collection.objects.all()
-    ]
+    collection_items = Collection.objects.annotate(
+        type=Value('collection', output_field=CharField())
+    ).values("type", "id", "created_at").order_by()
 
-    # Merge and sort by date descending
-    items = sorted(standalone_posts + collection_items, key=lambda x: x['date'], reverse=True)
+    combined = standalone_posts.union(
+        collection_items,
+        all=True
+    ).order_by('-created_at')
 
-    paginator = Paginator(items, 20)
-    page_obj = paginator.get_page(request.GET.get('page', 1))
+    paginator = Paginator(combined, 20)
+    page_items = paginator.get_page(request.GET.get('page', 1))
+
+    page_post_ids = []
+    page_collection_ids = []
+    for row in page_items:
+        if row["type"] == "post":
+            page_post_ids.append(row["id"])
+        else:
+            page_collection_ids.append(row["id"])
+    
+    posts = Post.objects.in_bulk(page_post_ids)
+    collections = Collection.objects.in_bulk(page_collection_ids)
+
+
+    page_obj = []
+    for row in page_items:
+        if row["type"] == "post":
+            obj = posts.get(row["id"])
+        else:
+            obj = collections.get(row["id"])
+        
+        obj.type = row["type"]
+        page_obj.append(obj)
 
     return render(request, 'forum/post_list.html', {
         'page_obj': page_obj,
@@ -254,7 +275,7 @@ def collection_create(request):
         if form.is_valid():
             form.save()
             return redirect('collection_list')
-    return render(request, 'forum/collection_form.html', {'form': form, 'title': '创建合集'})
+    return render(request, 'forum/collection_form.html', {'form': form})
 
 
 def collection_detail(request, collection_id):

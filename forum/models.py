@@ -3,9 +3,6 @@ from django.contrib.auth.models import User
 
 from .markdown import MarkdownModel
 
-import markdown
-import bleach
-
 # Create your models here.
 
 class Item(MarkdownModel):
@@ -47,11 +44,9 @@ class Comment(MarkdownModel):
         return f"{self.author} comment {self.post}"
 
 
-class Collection(models.Model):
+class Collection(MarkdownModel):
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='collections')
     name = models.CharField(max_length=100)
-    description = models.TextField(blank=True, default='')
-    description_html = models.TextField(editable=False, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -59,19 +54,6 @@ class Collection(models.Model):
 
     def __str__(self):
         return self.name
-
-    def save(self, *args, **kwargs):
-        if self.description:
-            html = markdown.markdown(self.description, extensions=MarkdownModel.MARKDOWN_EXTENSIONS)
-            self.description_html = bleach.clean(
-                html,
-                tags=MarkdownModel.allowed_tags,
-                attributes=MarkdownModel.allowed_attrs,
-                protocols=MarkdownModel.ALLOWED_PROTOCOLS,
-            )
-        else:
-            self.description_html = ''
-        super().save(*args, **kwargs)
 
 
 class CollectionPost(models.Model):
