@@ -1,5 +1,5 @@
 import json, re, random
-from django.db.models import F
+from django.db.models import F, CharField, Subquery, Value
 from django.db import models as db_models
 from django.http import JsonResponse
 from django.urls import reverse_lazy
@@ -22,29 +22,30 @@ from forum.bots_manager import manager
 
 def index(request):
     items = Item.objects.all()
-    posts = Post.objects.all().order_by('-created_at')[:5]
+    posts = Post.objects.all()[:5]
     return render(request, 'forum/index.html', {'items': items, 'posts' : posts})
 
 def post_list(request):
     # IDs of posts that belong to any collection
-    collected_post_ids = CollectionPost.objects.values_list('post_id', flat=True)
+    collected_post_ids = CollectionPost.objects.values('post_id')
 
     # Standalone posts (not in any collection)
-    standalone_posts = [
-        {'type': 'post', 'obj': p, 'date': p.created_at}
-        for p in Post.objects.exclude(id__in=collected_post_ids)
-    ]
+    standalone_posts = Post.objects.exclude(
+        id__in=Subquery(collected_post_ids)
+    ).annotate(
+        type=Value('post', output_field=CharField())
+    )
 
     # Collections as items
-    collection_items = [
-        {'type': 'collection', 'obj': c, 'date': c.created_at}
-        for c in Collection.objects.all()
-    ]
+    collection_items = Collection.objects.annotate(
+        type=Value('collection', output_field=CharField())
+    )
 
-    # Merge and sort by date descending
-    items = sorted(standalone_posts + collection_items, key=lambda x: x['date'], reverse=True)
+    combined = list(standalone_posts) + list(collection_items)
 
-    paginator = Paginator(items, 20)
+    combined.sort(key=lambda x: x.created_at, reverse=True)
+
+    paginator = Paginator(combined, 20)
     page_obj = paginator.get_page(request.GET.get('page', 1))
 
     return render(request, 'forum/post_list.html', {
