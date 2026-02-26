@@ -15,7 +15,7 @@
       <a href="{% url 'collection_detail' collection.id %}">{{ collection.name }}</a>
       <small class="text-muted ms-2">by {{ collection.owner.username }}</small>
       {% if collection.content %}
-      <br><small class="text-muted">{{ collection.content }}</small>
+      <br><small class="text-muted">{{ collection.content | truncatechars:100}}</small>
       {% endif %}
     </div>
     <span class="badge bg-secondary">{{ collection.collection_posts.count }} 篇</span>
