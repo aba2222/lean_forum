@@ -37,14 +37,14 @@ class CollectionForm(forms.ModelForm):
 
     class Meta:
         model = Collection
-        fields = ['name', 'description']
+        fields = ['name', 'content']
         labels = {
             'name': '合集名称',
-            'description': '描述',
+            'content': '描述',
         }
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
-            'description': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+            'content': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
         }
 
     def save(self, commit=True):
