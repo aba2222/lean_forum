@@ -10,7 +10,7 @@
         {{ form.media }}
         {{ form.as_p }}
         <button type="submit" class="btn btn-primary btn-lg">
-            <i class="bi bi-pencil-square"></i> 保存修改
+            <span>{% include 'forum/icons/pencil-square.svg' %}</span> 保存修改
         </button>
         <a href="{% url 'post_detail' post.id %}" class="btn btn-outline-secondary btn-lg ms-2">取消</a>
     </form>
