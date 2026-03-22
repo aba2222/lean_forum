@@ -13,7 +13,7 @@
     <div class="card" style="width: 18rem;">
       <div class="card-body">
         <h5 class="card-title">{{ item.name }} - 平均分：{{ item.average_rating|floatformat:1 }}</h5>
-        <a href="{% url 'rate_item' item.id %}" class="btn btn-primary"  aria-label="给{{ item.name }}打分">去打分</a>
+        <a href="{% url 'rate_item' item.id %}" class="btn btn-primary" aria-label="给{{ item.name }}打分">去打分</a>
       </div>
     </div>
   </div>
@@ -33,7 +33,7 @@
       <div class="card-body">
         <h5 class="card-title">{{ post.title }} - 作者：{{ post.author }}</h5>
         <p class="card-text">{{post.created_at | naturaltime}}</p>
-        <a href="{% url 'post_detail' post.id %}" class="btn btn-primary">去查看</a>
+        <a href="{% url 'post_detail' post.id %}" class="btn btn-primary" aria-label="查看{{ post.title }}">去查看</a>
       </div>
     </div>
   </div>
