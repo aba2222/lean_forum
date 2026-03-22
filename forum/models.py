@@ -1,5 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django_activitypub.models import LocalActor, Note
+from django.urls import reverse
 
 from .markdown import MarkdownModel
 
@@ -29,8 +31,32 @@ class Post(MarkdownModel):
     created_at = models.DateTimeField(auto_now_add=True)
     views = models.PositiveIntegerField(default=0)
 
+    def get_absolute_url(self):
+        return reverse('post_detail', kwargs={'post_id': self.id})
+
+    def publish(self, base_uri):
+        actor = LocalActor.objects.get(user=self.author)
+        Note.objects.upsert(
+            base_uri=base_uri,
+            local_actor=actor,
+            content=self.content_html,
+            content_url=f'{base_uri}{self.get_absolute_url()}'
+        )
+    
+    def delete(self, base_uri, *args, **kwargs):
+        Note.objects.delete_local(
+            base_uri=base_uri,
+            content_url=f'{base_uri}{self.get_absolute_url()}',
+        )
+        super().delete(*args, **kwargs)
+
     def __str__(self):
         return f"{self.title} by {self.author}"
+    
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        #TODO: base_uri should be dynamic
+        self.publish(base_uri='http://localhost:8000')
     
     class Meta:
         ordering = ['-created_at'] 

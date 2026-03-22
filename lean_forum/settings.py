@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "rest_framework",
     'mdeditor',
     'webpush',
+    'django_activitypub',
     'forum',
 ]
 

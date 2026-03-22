@@ -23,6 +23,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     re_path(r'^webpush/', include('webpush.urls')),
     path('mdeditor/', include('mdeditor.urls')),
+    path('', include('django_activitypub.urls')),
     path('', include('forum.urls')),
 ]
 
