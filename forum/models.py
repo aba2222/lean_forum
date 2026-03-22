@@ -35,13 +35,16 @@ class Post(MarkdownModel):
         return reverse('post_detail', kwargs={'post_id': self.id})
 
     def publish(self, base_uri):
-        actor = LocalActor.objects.get(user=self.author)
-        Note.objects.upsert(
-            base_uri=base_uri,
-            local_actor=actor,
-            content=self.content_html,
-            content_url=f'{base_uri}{self.get_absolute_url()}'
-        )
+        try:
+            actor = LocalActor.objects.get(user=self.author)
+            Note.objects.upsert(
+                base_uri=base_uri,
+                local_actor=actor,
+                content=self.content_html,
+                content_url=f'{base_uri}{self.get_absolute_url()}'
+            )
+        except LocalActor.DoesNotExist:
+            pass
     
     def delete(self, base_uri, *args, **kwargs):
         Note.objects.delete_local(
