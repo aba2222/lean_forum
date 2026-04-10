@@ -7,19 +7,10 @@
 <a href="{% url 'post_create' %}">发新帖</a>
 <ul>
 {% for item in page_obj %}
-  {% if item.type == 'collection' %}
-  <li>
-    <span>{% include 'forum/icons/collection.svg' %}</span>
-    <a href="{% url 'collection_detail' item.id %}">{{ item.name }}</a>
-    — 合集 · {{ item.owner.username }}
-    · {{ item.collection_posts.count }} 篇文章
-  </li>
-  {% else %}
   <li>
     {{ item.title }} - 作者：{{ item.author.username }} <small class="text-muted"><span>{% include 'forum/icons/eye.svg' %}</span> {{ item.views }}</small>
     <a href="{% url 'post_detail' item.id %}">去查看</a>
   </li>
-  {% endif %}
 {% empty %}
   <li>暂时没有帖子</li>
 {% endfor %}
