@@ -4,7 +4,7 @@ from . import views, api
 urlpatterns = [
     path('', views.index, name='index'),
     path('rate/<int:item_id>/', views.rate_item, name='rate_item'),
-    path('posts/', views.post_list, name='post_list'),
+    path('posts/', views.PostListView.as_view(), name='post_list'),
     path('posts/create/', views.post_create, name='post_create'),
     path('posts/<int:post_id>/', views.PostDetailView.as_view(), name='post_detail'),
     path('posts/<int:pk>/delete/', views.PostDeleteView.as_view(), name='post_delete'),

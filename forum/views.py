@@ -10,7 +10,7 @@ from django.core.paginator import Paginator
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
-from django.views.generic import View, DeleteView
+from django.views.generic import ListView, View, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from .utils import send_group_notification
 
@@ -25,53 +25,15 @@ def index(request):
     posts = Post.objects.all()[:5]
     return render(request, 'forum/index.html', {'items': items, 'posts' : posts})
 
-def post_list(request):
-    # Standalone posts (not in any collection)
-    standalone_posts = Post.objects.exclude(
-        id__in = CollectionPost.objects.values_list('post_id', flat=True)  # IDs of posts that belong to any collection
-    ).annotate(
-        type=Value('post', output_field=CharField())
-    ).values("type", "id", "created_at").order_by()
+class PostListView(ListView):
+    model = Post
+    template_name = 'forum/post_list.html'
+    paginate_by = 10
 
-    # Collections as items
-    collection_items = Collection.objects.annotate(
-        type=Value('collection', output_field=CharField())
-    ).values("type", "id", "created_at").order_by()
-
-    combined = standalone_posts.union(
-        collection_items,
-        all=True
-    ).order_by('-created_at')
-
-    paginator = Paginator(combined, 20)
-    page_items = paginator.get_page(request.GET.get('page', 1))
-
-    page_post_ids = []
-    page_collection_ids = []
-    for row in page_items:
-        if row["type"] == "post":
-            page_post_ids.append(row["id"])
-        else:
-            page_collection_ids.append(row["id"])
-    
-    posts = Post.objects.in_bulk(page_post_ids)
-    collections = Collection.objects.in_bulk(page_collection_ids)
-
-
-    page_obj = []
-    for row in page_items:
-        if row["type"] == "post":
-            obj = posts.get(row["id"])
-        else:
-            obj = collections.get(row["id"])
-        
-        obj.type = row["type"]
-        page_obj.append(obj)
-
-    return render(request, 'forum/post_list.html', {
-        'page_obj': page_obj,
-        'now': timezone.now(),
-    })
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["now"] = timezone.now()
+        return context
 
 @login_required
 def rate_item(request, item_id):
