@@ -72,6 +72,45 @@ class ForumTests(TestCase):
         self.assertEqual(resp.status_code, 302)
         self.assertFalse(Post.objects.filter(title='NoAuth').exists())
 
+    def test_api_create_post_and_comment(self):
+        posts_url = reverse('post-list')
+
+        # Unauthorized
+        anon_resp = self.client.post(
+            posts_url,
+            {'title': 'API Post', 'content': 'hello from api'},
+            content_type='application/json',
+        )
+        self.assertEqual(anon_resp.status_code, 401)
+
+        # Get JWT token for the user
+        token_resp = self.client.post(
+            reverse('token_obtain_pair'),
+            {'username': self.username, 'password': self.password},
+            content_type='application/json',
+        )
+        self.assertEqual(token_resp.status_code, 200)
+        access_token = token_resp.json()['access']
+        create_resp = self.client.post(
+            posts_url,
+            {'title': 'API Post', 'content': 'hello from api'},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=f'Bearer {access_token}',
+        )
+        self.assertEqual(create_resp.status_code, 201)
+        self.assertTrue(Post.objects.filter(title='API Post', author=self.user).exists())
+
+        post = Post.objects.get(title='API Post', author=self.user)
+        comments_url = reverse('post-comments', kwargs={'pk': post.id})
+        comment_resp = self.client.post(
+            comments_url,
+            {'content': 'nice api comment'},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=f'Bearer {access_token}',
+        )
+        self.assertEqual(comment_resp.status_code, 201)
+        self.assertTrue(Comment.objects.filter(post=post, author=self.user, content='nice api comment').exists())
+
     def test_post_delete_only_author(self):
         other = User.objects.create_user('other2', password='p3')
         post = Post.objects.create(author=self.user, title='to_delete', content='c')
