@@ -12,6 +12,7 @@ class ForumTests(TestCase):
         self.username = 'testuser'
         self.password = 'pass12345'
         self.user = User.objects.create_user(self.username, password=self.password)
+        self.user2 = User.objects.create_user('other', password='p2')
         self.item = Item.objects.create(name='Item1', content='desc')
     
     def test_create_post(self):
@@ -61,9 +62,8 @@ class ForumTests(TestCase):
         self.assertEqual(r.score, 2)
     
     def test_average_rating_method(self):
-        other = User.objects.create_user('other', password='p2')
         Rating.objects.create(user=self.user, item=self.item, score=3)
-        Rating.objects.create(user=other, item=self.item, score=5)
+        Rating.objects.create(user=self.user2, item=self.item, score=5)
         self.assertAlmostEqual(self.item.average_rating(), 4.0)
 
     def test_anonymous_cannot_create_post(self):
@@ -111,11 +111,27 @@ class ForumTests(TestCase):
         self.assertEqual(comment_resp.status_code, 201)
         self.assertTrue(Comment.objects.filter(post=post, author=self.user, content='nice api comment').exists())
 
+    def test_api_others_cannot_delete_post(self):
+        post = Post.objects.create(author=self.user, title='to_delete', content='c')
+        url = reverse('post-detail', kwargs={'pk': post.id})
+
+        # anonymous user should not be able to delete
+        resp = self.client.delete(url)
+
+        self.assertEqual(resp.status_code, 401)
+        self.assertTrue(Post.objects.filter(id=post.id).exists())
+
+        # logged in as different user
+        self.client.login(username='other', password='p2')
+        resp = self.client.delete(url)
+
+        self.assertEqual(resp.status_code, 401)
+        self.assertTrue(Post.objects.filter(id=post.id).exists())
+
     def test_post_delete_only_author(self):
-        other = User.objects.create_user('other2', password='p3')
         post = Post.objects.create(author=self.user, title='to_delete', content='c')
         # login as different user
-        self.client.login(username='other2', password='p3')
+        self.client.login(username='other', password='p2')
         url = reverse('post_delete', kwargs={'pk': post.id})
         resp = self.client.post(url)
         # Other user should not be allowed to delete (404 from queryset filter)

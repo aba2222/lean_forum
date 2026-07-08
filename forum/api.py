@@ -1,7 +1,8 @@
 from .models import Post, Comment
 from rest_framework import routers, serializers, viewsets, status
 from rest_framework.decorators import action
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.exceptions import AuthenticationFailed
+from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 
 
@@ -55,7 +56,7 @@ class PostCreateSerializer(serializers.ModelSerializer):
 
 class PostViewSet(viewsets.ModelViewSet):
     queryset = Post.objects.all()
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticatedOrReadOnly]
 
     def get_queryset(self):
         return Post.objects.select_related("author").prefetch_related("comments__author")
@@ -67,13 +68,14 @@ class PostViewSet(viewsets.ModelViewSet):
             return PostCreateSerializer
         return PostDetailSerializer
 
-    def get_permissions(self):
-        if self.action in {"create", "comments"}:
-            return [IsAuthenticated()]
-        return [AllowAny()]
-
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
+
+    def destroy(self, request, *args, **kwargs):
+        post = self.get_object()
+        if not request.user.is_authenticated or post.author != request.user:
+            raise AuthenticationFailed("Only the author can delete this post.")
+        return super().destroy(request, *args, **kwargs)
 
     @action(detail=True, methods=["post"], url_path="comments")
     def comments(self, request, pk=None):
