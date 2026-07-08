@@ -3,21 +3,21 @@ from rest_framework import routers, serializers, viewsets
 
 # Serializers define the API representation.
 class CommentSerializer(serializers.ModelSerializer):
-    author = serializers.CharField(source="author.username")
+    author_name = serializers.CharField(source="author.username")
 
     class Meta:
         model = Comment
-        fields = ["id", "author", "content", "created_at"]
+        fields = ["id", "author", "author_name", "content", "created_at"]
 
 class PostListSerializer(serializers.ModelSerializer):
-    author = serializers.CharField(source="author.username")
+    author_name = serializers.CharField(source="author.username")
 
     class Meta:
         model = Post
-        fields = ["id", "author", "title", "content", "created_at"]
+        fields = ["id", "author", "author_name", "title", "created_at"]
 
 class PostDetailSerializer(serializers.ModelSerializer):
-    author = serializers.CharField(source="author.username")
+    author_name = serializers.CharField(source="author.username")
     comments = CommentSerializer(many=True, read_only=True)
 
     class Meta:
@@ -25,6 +25,7 @@ class PostDetailSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "author",
+            "author_name",
             "title",
             "content",
             "created_at",
