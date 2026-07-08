@@ -26,4 +26,5 @@ urlpatterns = [
     path('about/', views.about_view, name='about'),
     path('logout/', views.logout_view, name='logout'),
     path('api/forum/', include(api.router.urls)),
+    path('api/register/', views.UserRegistrationView.as_view(), name='register_api'),
 ]

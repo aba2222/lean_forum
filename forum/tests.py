@@ -142,10 +142,18 @@ class ForumTests(TestCase):
         # Newly created item without ratings should report 0 average
         self.assertAlmostEqual(self.item.average_rating(), 0)
         self.assertIn('(avg: 0.0)', str(self.item))
+    
+    def test_register_api_creates_user(self):
+        url = reverse('register_api')
+        resp = self.client.post(url, {'username': 'newuser', 'password': 'pw1', 'password2': 'pw1'}, content_type='application/json')
+        self.assertEqual(resp.status_code, 201)
+        self.assertTrue(User.objects.filter(username='newuser').exists())
+        new_user = User.objects.get(username='newuser')
+        self.assertTrue(new_user.check_password('pw1'))
 
     def test_register_view_creates_user(self):
         url = reverse('register')
-        resp = self.client.post(url, {'username': 'newuser', 'password': 'pw1', 'confirm_password': 'pw1'}, follow=True)
-        self.assertEqual(User.objects.filter(username='newuser').count(), 1)
-        new_user = User.objects.get(username='newuser')
+        resp = self.client.post(url, {'username': 'newuser2', 'password': 'pw1', 'confirm_password': 'pw1'}, follow=True)
+        self.assertEqual(User.objects.filter(username='newuser2').count(), 1)
+        new_user = User.objects.get(username='newuser2')
         self.assertTrue(new_user.check_password('pw1'))

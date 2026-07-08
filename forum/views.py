@@ -12,8 +12,14 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.views.generic import ListView, View, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin
-from .utils import send_group_notification
+from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
+from rest_framework.views import APIView
 
+
+from forum.api import UserRegistrationSerializer
+from .utils import send_group_notification
 from forum.form import MDEditorCommentForm, MDEditorModelForm, CollectionForm
 from forum.models import Comment, Item, Post, Rating, Collection, CollectionPost
 from forum.bots_manager import manager
@@ -380,3 +386,15 @@ def post_add_to_collection(request, post_id):
         'post': post,
         'collections': collections,
     })
+
+class UserRegistrationView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = UserRegistrationSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+              "message": "User registered successfully"
+            }, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
