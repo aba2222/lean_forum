@@ -1,5 +1,5 @@
-import json, re, random
-from django.db.models import F, CharField, Subquery, Value
+import re, random
+from django.db.models import F
 from django.db import models as db_models
 from django.http import JsonResponse
 from django.urls import reverse_lazy
