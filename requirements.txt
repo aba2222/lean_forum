@@ -9,4 +9,5 @@ django-webpush>=0.3.6
 bleach>=6.3.0
 djangorestframework
 djangorestframework-simplejwt
+django-cors-headers
 openai
