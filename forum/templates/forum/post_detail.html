@@ -126,7 +126,6 @@
     <h3 class="mb-3">发表评论</h3>
     <form method="post" class="comment-form">
         {% csrf_token %}
-        {{ forms.media }}
         {{ forms.as_p }}
         <button type="submit" class="btn btn-primary">
             发表评论

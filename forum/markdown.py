@@ -1,6 +1,6 @@
 from django.db import models
 
-from mdeditor.fields import MDTextField
+from md_editor.models import MDTextField
 import markdown
 import bleach
 
