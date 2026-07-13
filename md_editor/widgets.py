@@ -10,9 +10,11 @@ from django.utils.safestring import mark_safe
 
 class MDEditorWidget(Textarea):
     def render(self, name, value, attrs = None, renderer = None):
-        final_attrs = self.build_attrs(self.attrs, {**attrs, "name" : name})
+        if value is None:
+            value = ''
         return mark_safe(render_to_string('md_editor.html', {
-            'final_attrs': flatatt(final_attrs),
+            'final_attrs': flatatt(attrs),
             'value': conditional_escape(force_str(value)),
-            'id': final_attrs['id'],
+            'id': attrs['id'],
+            'name': name,
         }))
