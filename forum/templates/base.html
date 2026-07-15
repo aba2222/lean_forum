@@ -28,6 +28,10 @@
         disabled
     />
 
+    <link id="highlightjs-light" rel="stylesheet" href="https://unpkg.com/@highlightjs/cdn-assets@11.11.1/styles/default.min.css">
+    <link id="highlightjs-dark" rel="stylesheet" href="https://unpkg.com/@highlightjs/cdn-assets@11.11.1/styles/github-dark.min.css" disabled>
+    <script src="https://unpkg.com/@highlightjs/cdn-assets@11.11.1/highlight.min.js"></script>
+
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
 
     <link href="https://cdn.jsdelivr.net.cn/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
@@ -47,9 +51,15 @@
             }
         }
 
-		[data-bs-theme="dark"] body {
-			background-color: #0d1117;
-		}
+        [data-bs-theme="dark"] body {
+            background-color: #0d1117;
+        }
+
+        [data-bs-theme="dark"] .markdown-body pre,
+        [data-bs-theme="dark"] .markdown-body code {
+            background: #0d1117 !important;
+            color: #c9d1d9 !important;
+        }
     </style>
     {% block extra_head %}{% endblock %}
 </head>
@@ -159,11 +169,19 @@
             markdownDark.disabled = !isDark;
         }
 
+        function updateHighlightTheme(isDark) {
+            const highlightLight = document.getElementById('highlightjs-light');
+            const highlightDark = document.getElementById('highlightjs-dark');
+            highlightLight.disabled = isDark;
+            highlightDark.disabled = !isDark;
+        }
+
         function syncTheme(theme) {
             const isDark = theme === 'dark';
             document.documentElement.setAttribute('data-bs-theme', theme);
             updateThemeIcon(isDark);
             updateMarkdownTheme(isDark);
+            updateHighlightTheme(isDark);
         }
 
         const initialTheme = getTheme();
@@ -187,5 +205,6 @@
         window.addEventListener('scroll', () => btn.style.display = window.scrollY > 300 ? 'block' : 'none');
         btn.addEventListener('click', () => window.scrollTo({top:0,behavior:'smooth'}));
     </script>
+    <script>hljs.highlightAll();</script>
 </body>
 </html>
