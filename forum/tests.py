@@ -1,7 +1,8 @@
+from django.conf import settings
 from django.test import TestCase
 from django.urls import reverse
 from django.contrib.auth.models import User
-
+from django.core.files.uploadedfile import SimpleUploadedFile
 
 from .models import Post, Comment, Item, Rating
 
@@ -127,6 +128,24 @@ class ForumTests(TestCase):
 
         self.assertEqual(resp.status_code, 401)
         self.assertTrue(Post.objects.filter(id=post.id).exists())
+
+    def test_upload_view_saves_image_to_storage(self):
+        self.client.login(username=self.username, password=self.password)
+        image = SimpleUploadedFile(
+            'test-image.jpg',
+            b'fake-image-bytes',
+            content_type='image/jpeg',
+        )
+
+        response = self.client.post(reverse('upload_view'), {'image': image})
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['url'].startswith(settings.MEDIA_URL))
+
+        relative_path = payload['url'].removeprefix(settings.MEDIA_URL)
+        self.assertFalse(relative_path.startswith('/'))
+        self.assertTrue(relative_path.endswith('.jpg'))
 
     def test_post_delete_only_author(self):
         post = Post.objects.create(author=self.user, title='to_delete', content='c')
