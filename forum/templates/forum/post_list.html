@@ -9,9 +9,10 @@
     {% for item in page_obj %}
       <li>
         {{ item.title }} - 作者：{{ item.author.username }}
-        <small class="text-muted"
-          ><span>{% include 'forum/icons/eye.svg' %}</span> {{ item.views }}</small
-        >
+        <small class="text-muted">
+          <span>{% include 'forum/icons/eye.svg' %}</span>
+          {{ item.views }}
+        </small>
         <a href="{% url 'post_detail' item.id %}">去查看</a>
       </li>
       {% empty %}
