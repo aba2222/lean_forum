@@ -26,9 +26,16 @@
       </button>
     </div>
 
-    <div class="modal fade" id="deleteModal" tabindex="-1">
+    <div
+      class="modal fade"
+      id="deleteModal"
+      tabindex="-1"
+      role="dialog"
+      aria-labelledby="deleteModalLabel"
+      aria-hidden="true"
+    >
       <div class="modal-dialog">
-        <form method="post" action="{% url 'user_delete' %}" class="modal-content">
+        <form method="post" action="{% url 'user_delete' %}" class="modal-content" novalidate>
           {% csrf_token %}
 
           <div class="modal-header">
@@ -38,7 +45,7 @@
 
           <div class="modal-body">
             <div class="mb-3">
-              <label class="form-label">输入你的用户名</label>
+              <label for="username" class="form-label">输入你的用户名</label>
               <input
                 type="text"
                 id="username"
@@ -46,22 +53,29 @@
                 class="form-control"
                 required
                 autocomplete="off"
+                aria-required="true"
               />
             </div>
 
             <div class="mb-3">
-              <label class="form-label">输入确认文本 <strong>我要删除账户</strong></label>
+              <label for="confirmText" class="form-label"
+                >输入确认文本 <strong>我要删除账户</strong></label
+              >
               <input
                 type="text"
                 id="confirmText"
                 name="confirm_text"
                 class="form-control"
                 required
+                aria-describedby="confirmHelp"
               />
+              <div id="confirmHelp" class="form-text small text-muted">
+                请输入 <strong>我要删除账户</strong> 以确认。
+              </div>
             </div>
 
             <div class="mb-3">
-              <label class="form-label">密码</label>
+              <label for="password" class="form-label">密码</label>
               <input
                 type="password"
                 id="password"
@@ -69,6 +83,7 @@
                 class="form-control"
                 required
                 autocomplete="off"
+                aria-required="true"
               />
             </div>
 
@@ -76,7 +91,15 @@
           </div>
 
           <div class="modal-footer">
-            <button type="submit" id="deleteBtn" class="btn btn-danger" disabled>确认删除</button>
+            <button
+              type="submit"
+              id="deleteBtn"
+              class="btn btn-danger"
+              disabled
+              data-confirm-text="我要删除账户"
+            >
+              确认删除
+            </button>
           </div>
         </form>
       </div>
@@ -90,6 +113,7 @@
     const usernameInput = document.getElementById('username');
     const confirmTextInput = document.getElementById('confirmText');
     const deleteBtn = document.getElementById('deleteBtn');
+    deleteBtn.disabled = true;
 
     function checkValid() {
       const usernameOK = usernameInput.value === correctUsername;

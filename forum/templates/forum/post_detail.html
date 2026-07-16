@@ -44,10 +44,12 @@
     <div class="post-meta mb-3">
       <small class="text-muted d-flex justify-content-between align-items-center">
         <span>
-          <span>{% include 'forum/icons/person.svg' %}</span> {{ post.author.username }} &nbsp; |
-          &nbsp; <span>{% include 'forum/icons/calendar.svg' %}</span> {{
-          post.created_at|date:"Y-m-d H:i" }} &nbsp; | &nbsp;
-          <span>{% include 'forum/icons/eye.svg' %}</span> {{ post.views }}
+          <span>{% include 'forum/icons/person.svg' %}</span>
+          {{ post.author.username }} &nbsp; | &nbsp;
+          <span>{% include 'forum/icons/calendar.svg' %}</span>
+          {{ post.created_at|date:"Y-m-d H:i" }} &nbsp; | &nbsp;
+          <span>{% include 'forum/icons/eye.svg' %}</span>
+          {{ post.views }}
         </span>
         {% if can_delete %}
           <span>
