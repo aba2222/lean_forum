@@ -3,34 +3,37 @@
 {% block title %}所有文章{% endblock %}
 
 {% block content %}
-<h1>所有文章</h1>
-<a href="{% url 'post_create' %}">发新帖</a>
-<ul>
-{% for item in page_obj %}
-  <li>
-    {{ item.title }} - 作者：{{ item.author.username }} <small class="text-muted"><span>{% include 'forum/icons/eye.svg' %}</span> {{ item.views }}</small>
-    <a href="{% url 'post_detail' item.id %}">去查看</a>
-  </li>
-{% empty %}
-  <li>暂时没有帖子</li>
-{% endfor %}
-</ul>
+  <h1>所有文章</h1>
+  <a href="{% url 'post_create' %}">发新帖</a>
+  <ul>
+    {% for item in page_obj %}
+      <li>
+        {{ item.title }} - 作者：{{ item.author.username }}
+        <small class="text-muted"
+          ><span>{% include 'forum/icons/eye.svg' %}</span> {{ item.views }}</small
+        >
+        <a href="{% url 'post_detail' item.id %}">去查看</a>
+      </li>
+      {% empty %}
+      <li>暂时没有帖子</li>
+    {% endfor %}
+  </ul>
 
-<div class="pagination">
+  <div class="pagination">
     <span class="step-links">
-        {% if page_obj.has_previous %}
-            <a href="?page=1">&laquo; 第一页</a>
-            <a href="?page={{ page_obj.previous_page_number }}">上一页</a>
-        {% endif %}
+      {% if page_obj.has_previous %}
+        <a href="?page=1">&laquo; 第一页</a>
+        <a href="?page={{ page_obj.previous_page_number }}">上一页</a>
+      {% endif %}
 
-        <span class="current">
-            第 {{ page_obj.number }} 页 共 {{ page_obj.paginator.num_pages }} 页
-        </span>
+      <span class="current">
+        第 {{ page_obj.number }} 页 共 {{ page_obj.paginator.num_pages }} 页
+      </span>
 
-        {% if page_obj.has_next %}
-            <a href="?page={{ page_obj.next_page_number }}">下一页</a>
-            <a href="?page={{ page_obj.paginator.num_pages }}">最后一页 &raquo;</a>
-        {% endif %}
+      {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}">下一页</a>
+        <a href="?page={{ page_obj.paginator.num_pages }}">最后一页 &raquo;</a>
+      {% endif %}
     </span>
-</div>
+  </div>
 {% endblock %}

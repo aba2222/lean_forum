@@ -3,228 +3,261 @@
 {% block title %}{{ post.title }}{% endblock %}
 
 {% block content %}
-
-<div class="post-container">
+  <div class="post-container">
     {% if collection %}
-    <nav class="collection-nav mb-3 p-2 border rounded d-flex justify-content-between align-items-center">
+      <nav
+        class="collection-nav mb-3 p-2 border rounded d-flex justify-content-between align-items-center"
+      >
         <span>
-            {% if prev_post %}
-            <a href="{% url 'collection_post_detail' collection.id prev_post.id %}">&laquo; 上一篇</a>
-            {% endif %}
+          {% if prev_post %}
+            <a href="{% url 'collection_post_detail' collection.id prev_post.id %}"
+              >&laquo; 上一篇</a
+            >
+          {% endif %}
         </span>
         <span>
-            <span>{% include 'forum/icons/collection.svg' %}</span>
-            <a href="{% url 'collection_detail' collection.id %}">{{ collection.name }}</a>
-            <button class="btn btn-sm btn-outline-secondary ms-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#collectionToc" aria-controls="collectionToc" title="目录">
-                <span>{% include 'forum/icons/list-ul.svg' %}</span>
-            </button>
+          <span>{% include 'forum/icons/collection.svg' %}</span>
+          <a href="{% url 'collection_detail' collection.id %}">{{ collection.name }}</a>
+          <button
+            class="btn btn-sm btn-outline-secondary ms-2"
+            type="button"
+            data-bs-toggle="offcanvas"
+            data-bs-target="#collectionToc"
+            aria-controls="collectionToc"
+            title="目录"
+          >
+            <span>{% include 'forum/icons/list-ul.svg' %}</span>
+          </button>
         </span>
         <span>
-            {% if next_post %}
-            <a href="{% url 'collection_post_detail' collection.id next_post.id %}">下一篇 &raquo;</a>
-            {% endif %}
+          {% if next_post %}
+            <a href="{% url 'collection_post_detail' collection.id next_post.id %}"
+              >下一篇 &raquo;</a
+            >
+          {% endif %}
         </span>
-    </nav>
+      </nav>
     {% endif %}
 
     <h1 class="post-title">{{ post.title }}</h1>
-    
+
     <div class="post-meta mb-3">
-        <small class="text-muted d-flex justify-content-between align-items-center">
-            <span>
-                <span>{% include 'forum/icons/person.svg' %}</span> {{ post.author.username }} 
-                &nbsp; | &nbsp;
-                <span>{% include 'forum/icons/calendar.svg' %}</span> {{ post.created_at|date:"Y-m-d H:i" }}
-                &nbsp; | &nbsp;
-                <span>{% include 'forum/icons/eye.svg' %}</span> {{ post.views }}
-            </span>
-            {% if can_delete %}
-            <span>
-                <a href="{% url 'post_edit' post_id=post.id %}" class="text-muted me-2" title="编辑帖子">
-                    <span aria-hidden="true">{% include 'forum/icons/pencil-square.svg' %}</span>
-                </a>
-                <a href="{% url 'post_add_to_collection' post_id=post.id %}" class="text-secondary me-2" title="添加到合集">
-                    <span aria-hidden="true">{% include 'forum/icons/collection.svg' %}</span>
-                </a>
-                <a href="{% url 'post_delete' pk=post.id %}" class="text-danger" title="删除帖子">
-                    <span aria-hidden="true">{% include 'forum/icons/trash.svg' %}</span>
-                </a>
-            </span>
-            {% endif %}
-        </small>
+      <small class="text-muted d-flex justify-content-between align-items-center">
+        <span>
+          <span>{% include 'forum/icons/person.svg' %}</span> {{ post.author.username }} &nbsp; |
+          &nbsp; <span>{% include 'forum/icons/calendar.svg' %}</span> {{
+          post.created_at|date:"Y-m-d H:i" }} &nbsp; | &nbsp;
+          <span>{% include 'forum/icons/eye.svg' %}</span> {{ post.views }}
+        </span>
+        {% if can_delete %}
+          <span>
+            <a
+              href="{% url 'post_edit' post_id=post.id %}"
+              class="text-muted me-2"
+              title="编辑帖子"
+            >
+              <span aria-hidden="true">{% include 'forum/icons/pencil-square.svg' %}</span>
+            </a>
+            <a
+              href="{% url 'post_add_to_collection' post_id=post.id %}"
+              class="text-secondary me-2"
+              title="添加到合集"
+            >
+              <span aria-hidden="true">{% include 'forum/icons/collection.svg' %}</span>
+            </a>
+            <a href="{% url 'post_delete' pk=post.id %}" class="text-danger" title="删除帖子">
+              <span aria-hidden="true">{% include 'forum/icons/trash.svg' %}</span>
+            </a>
+          </span>
+        {% endif %}
+      </small>
     </div>
 
-    <article class="markdown-body mb-4">
-        {{ post.content_html | safe }}
-    </article>
-</div>
+    <article class="markdown-body mb-4">{{ post.content_html | safe }}</article>
+  </div>
 
-<hr class="my-4">
+  <hr class="my-4" />
 
-<section class="comments-section">
+  <section class="comments-section">
     <h2 class="mb-4">
-        评论
-        <span class="ms-2">({{ total_comments }})</span>
+      评论
+      <span class="ms-2">({{ total_comments }})</span>
     </h2>
 
     {% if comments %}
-    <div class="comments-list">
+      <div class="comments-list">
         {% for comment in comments %}
-        <div class="comment-item mb-3 border rounded">
+          <div class="comment-item mb-3 border rounded">
             <div class="comment-header border-bottom">
-                <strong><small class="text-muted">#{{ page_obj.start_index|add:forloop.counter0 }}</small> {{ comment.author.username }}</strong>
-                <span>
-                    <small class="text-muted">{{ comment.created_at|date:"Y-m-d H:i" }}</small>
-                    {% if comment.author == request.user %}
-                    <a href="{% url 'comment_edit' comment_id=comment.id %}" class="ms-2 text-muted" title="编辑评论">
-                        <span> 
-                            {% include 'forum/icons/pencil-square.svg' %}
-                        </span>
-                    </a>
-                    <a href="{% url 'comment_delete' comment_id=comment.id %}" class="ms-2 text-danger" title="删除评论">
-                        <span> 
-                            {% include 'forum/icons/trash.svg' %}
-                        </span>
-                    </a>
-                    {% endif %}
-                </span>
+              <strong
+                ><small class="text-muted">#{{ page_obj.start_index|add:forloop.counter0 }}</small>
+                {{ comment.author.username }}</strong
+              >
+              <span>
+                <small class="text-muted">{{ comment.created_at|date:"Y-m-d H:i" }}</small>
+                {% if comment.author == request.user %}
+                  <a
+                    href="{% url 'comment_edit' comment_id=comment.id %}"
+                    class="ms-2 text-muted"
+                    title="编辑评论"
+                  >
+                    <span> {% include 'forum/icons/pencil-square.svg' %} </span>
+                  </a>
+                  <a
+                    href="{% url 'comment_delete' comment_id=comment.id %}"
+                    class="ms-2 text-danger"
+                    title="删除评论"
+                  >
+                    <span> {% include 'forum/icons/trash.svg' %} </span>
+                  </a>
+                {% endif %}
+              </span>
             </div>
-            <article class="markdown-body">
-                {{ comment.content_html | safe }}
-            </article>
-        </div>
+            <article class="markdown-body">{{ comment.content_html | safe }}</article>
+          </div>
         {% endfor %}
-    </div>
-    {% if page_obj.has_other_pages %}
-    <div class="pagination">
-        <span class="step-links">
+      </div>
+      {% if page_obj.has_other_pages %}
+        <div class="pagination">
+          <span class="step-links">
             {% if page_obj.has_previous %}
-                <a href="?page=1">&laquo; 第一页</a>
-                <a href="?page={{ page_obj.previous_page_number }}">上一页</a>
+              <a href="?page=1">&laquo; 第一页</a>
+              <a href="?page={{ page_obj.previous_page_number }}">上一页</a>
             {% endif %}
             <span class="current">
-                第 {{ page_obj.number }} 页 共 {{ page_obj.paginator.num_pages }} 页
+              第 {{ page_obj.number }} 页 共 {{ page_obj.paginator.num_pages }} 页
             </span>
             {% if page_obj.has_next %}
-                <a href="?page={{ page_obj.next_page_number }}">下一页</a>
-                <a href="?page={{ page_obj.paginator.num_pages }}">最后一页 &raquo;</a>
+              <a href="?page={{ page_obj.next_page_number }}">下一页</a>
+              <a href="?page={{ page_obj.paginator.num_pages }}">最后一页 &raquo;</a>
             {% endif %}
-        </span>
-    </div>
-    {% endif %}
+          </span>
+        </div>
+      {% endif %}
     {% else %}
-    <div class="alert alert-info">
-        <span>{% include 'forum/icons/info-circle.svg' %}</span> 暂时没有评论，来发表第一条评论吧！
-    </div>
+      <div class="alert alert-info">
+        <span>{% include 'forum/icons/info-circle.svg' %}</span>
+        暂时没有评论，来发表第一条评论吧！
+      </div>
     {% endif %}
-</section>
+  </section>
 
-<hr class="my-4">
+  <hr class="my-4" />
 
-{% if user.is_authenticated %}
-<section class="comment-form-section">
-    <h3 class="mb-3">发表评论</h3>
-    <form method="post" class="comment-form">
-        {% csrf_token %}
-        {{ forms.as_p }}
-        <button type="submit" class="btn btn-primary">
-            发表评论
-        </button>
-    </form>
-</section>
-{% else %}
-<div class="alert alert-warning">
-    <span>{% include 'forum/icons/exclamation-circle.svg' %}</span> 
-    <a href="{% url 'login' %}" class="alert-link">登录</a> 后才能评论。
-</div>
-{% endif %}
+  {% if user.is_authenticated %}
+    <section class="comment-form-section">
+      <h3 class="mb-3">发表评论</h3>
+      <form method="post" class="comment-form">
+        {% csrf_token %} {{ forms.as_p }}
+        <button type="submit" class="btn btn-primary">发表评论</button>
+      </form>
+    </section>
+  {% else %}
+    <div class="alert alert-warning">
+      <span>{% include 'forum/icons/exclamation-circle.svg' %}</span>
+      <a href="{% url 'login' %}" class="alert-link">登录</a> 后才能评论。
+    </div>
+  {% endif %}
 
-{% if collection %}
-<div class="offcanvas offcanvas-end" tabindex="-1" id="collectionToc" aria-labelledby="collectionTocLabel">
-    <div class="offcanvas-header">
+  {% if collection %}
+    <div
+      class="offcanvas offcanvas-end"
+      tabindex="-1"
+      id="collectionToc"
+      aria-labelledby="collectionTocLabel"
+    >
+      <div class="offcanvas-header">
         <h6 class="offcanvas-title" id="collectionTocLabel">
-            <span>{% include 'forum/icons/collection.svg' %}</span> {{ collection.name }}
+          <span>{% include 'forum/icons/collection.svg' %}</span> {{ collection.name }}
         </h6>
-        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="关闭"></button>
-    </div>
-    <div class="offcanvas-body p-0">
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="offcanvas"
+          aria-label="关闭"
+        ></button>
+      </div>
+      <div class="offcanvas-body p-0">
         <ol class="list-group list-group-numbered list-group-flush">
-            {% for cp in collection_posts_all %}
+          {% for cp in collection_posts_all %}
             <li class="list-group-item px-3 py-2 {% if cp.post.id == post.id %}active{% endif %}">
-                {% if cp.post.id == post.id %}
-                    {{ cp.post.title }}
-                {% else %}
-                    <a href="{% url 'collection_post_detail' collection.id cp.post.id %}" class="text-decoration-none">{{ cp.post.title }}</a>
-                {% endif %}
+              {% if cp.post.id == post.id %}
+                {{ cp.post.title }}
+              {% else %}
+                <a
+                  href="{% url 'collection_post_detail' collection.id cp.post.id %}"
+                  class="text-decoration-none"
+                  >{{ cp.post.title }}</a
+                >
+              {% endif %}
             </li>
-            {% endfor %}
+          {% endfor %}
         </ol>
+      </div>
     </div>
-</div>
-{% endif %}
+  {% endif %}
 
-<style>
+  <style>
     .post-container {
-        margin-bottom: 30px;
+      margin-bottom: 30px;
     }
 
     .post-title {
-        margin-bottom: 15px;
+      margin-bottom: 15px;
     }
 
     .post-meta {
-        padding-bottom: 10px;
-        border-bottom: 1px solid #d0d7de;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #d0d7de;
     }
 
     .comments-list {
-        margin-bottom: 20px;
+      margin-bottom: 20px;
     }
 
     .comment-item {
-        overflow: hidden;
+      overflow: hidden;
     }
 
     .comment-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background-color: #f6f8fa;
-        padding: 0.7rem;
-        margin: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background-color: #f6f8fa;
+      padding: 0.7rem;
+      margin: 0;
     }
 
     .comment-item article.markdown-body {
-        padding: 3rem;
+      padding: 3rem;
     }
 
     .comment-form {
-        background-color: rgba(0, 0, 0, 0.02);
-        padding: 20px;
-        border-radius: 6px;
+      background-color: rgba(0, 0, 0, 0.02);
+      padding: 20px;
+      border-radius: 6px;
     }
 
-    [data-bs-theme="dark"] .post-meta {
-        border-bottom-color: #30363d;
+    [data-bs-theme='dark'] .post-meta {
+      border-bottom-color: #30363d;
     }
 
-    [data-bs-theme="dark"] .comment-header {
-        background-color: #151b23
+    [data-bs-theme='dark'] .comment-header {
+      background-color: #151b23;
     }
 
-    [data-bs-theme="dark"] .comment-form {
-        background-color: rgba(255, 255, 255, 0.05);
+    [data-bs-theme='dark'] .comment-form {
+      background-color: rgba(255, 255, 255, 0.05);
     }
 
     .collection-toc .list-group-item {
-        font-size: 0.875rem;
-        background: transparent;
+      font-size: 0.875rem;
+      background: transparent;
     }
 
     .collection-toc .list-group-item.active {
-        background-color: var(--bs-primary);
-        border-color: var(--bs-primary);
+      background-color: var(--bs-primary);
+      border-color: var(--bs-primary);
     }
-</style>
-
+  </style>
 {% endblock %}

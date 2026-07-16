@@ -3,15 +3,16 @@
 {% block title %}编辑文章{% endblock %}
 
 {% block content %}
-<div class="post-create-container" style="max-width: 1200px; width: 100%; margin: 0 auto;">
+  <div class="post-create-container" style="max-width: 1200px; width: 100%; margin: 0 auto;">
     <h1 class="mb-4">编辑文章</h1>
     <form method="post" class="form-container">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit" class="btn btn-primary btn-lg">
-            <span>{% include 'forum/icons/pencil-square.svg' %}</span> 保存修改
-        </button>
-        <a href="{% url 'post_detail' post.id %}" class="btn btn-outline-secondary btn-lg ms-2">取消</a>
+      {% csrf_token %} {{ form.as_p }}
+      <button type="submit" class="btn btn-primary btn-lg">
+        <span>{% include 'forum/icons/pencil-square.svg' %}</span> 保存修改
+      </button>
+      <a href="{% url 'post_detail' post.id %}" class="btn btn-outline-secondary btn-lg ms-2"
+        >取消</a
+      >
     </form>
-</div>
+  </div>
 {% endblock %}
