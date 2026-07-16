@@ -1,8 +1,19 @@
 from django.db import models
+from markdown_it import MarkdownIt
 
-from mdeditor.fields import MDTextField
-import markdown
+from md_editor.models import MDTextField
 import bleach
+
+def highlight_code(code, lang, attrs):
+    return (
+        '<pre><code class="language-{}">{}</code></pre>'
+        .format(
+            lang,
+            code
+        )
+    )
+
+md = MarkdownIt("commonmark", {"linkify": True, "highlight": highlight_code})
 
 class MarkdownModel(models.Model):
     content = MDTextField(max_length=40000)
@@ -20,13 +31,14 @@ class MarkdownModel(models.Model):
         "blockquote","b", "i", "strong", "em", "a", "p", "ul", "ol", "li",
         "code", "pre", "h1", "h2", "h3", "h4", "h5", "h6", "hr", "img",
         "table", "thead", "tr", "th", "tbody", "td", "sup", "dt", "dd", "dl",
-        "abbr", "div", "br"
+        "abbr", "div", "span", "br"
     ]
 
     allowed_attrs = {
         "a": ["href", "title"],
         "img": ["src", "alt", "title"],
-        "div" : ["class"]
+        "div": ["class"],
+        "span": ["class"]
     }
 
     ALLOWED_PROTOCOLS = ["http", "https", "mailto"]
@@ -35,9 +47,7 @@ class MarkdownModel(models.Model):
         abstract = True
 
     def markdown_render(self, content):
-        content_html = markdown.markdown(
-                content, extensions=self.MARKDOWN_EXTENSIONS
-            )
+        content_html = md.render(content)
         content_html = bleach.clean(content_html, tags=self.allowed_tags, 
                                attributes=self.allowed_attrs, 
                                protocols=self.ALLOWED_PROTOCOLS)

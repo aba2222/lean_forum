@@ -9,7 +9,6 @@
             <h3 class="mb-4">编辑评论</h3>
             <form method="post" class="comment-form">
                 {% csrf_token %}
-                {{ form.media }}
                 {{ form.as_p }}
                 <button type="submit" class="btn btn-primary">
                     <span>{% include 'forum/icons/pencil-square.svg' %}</span> 保存修改

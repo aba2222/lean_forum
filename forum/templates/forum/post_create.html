@@ -3,11 +3,10 @@
 {% block title %}发新帖{% endblock %}
 
 {% block content %}
-<div class="post-create-container" style="max-width: 800px; margin: 0 auto;">
+<div class="post-create-container" style="max-width: 1200px; width: 100%; margin: 0 auto;">
     <h1 class="mb-4">发新帖</h1>
     <form method="post" class="form-container">
         {% csrf_token %}
-        {{ form.media }}
         {{ form.as_p }}
         <button type="submit" class="btn btn-primary btn-lg">
             发布文章

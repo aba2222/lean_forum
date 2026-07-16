@@ -1,3 +1,5 @@
+uploads/
+
 #Special gitignore for Django
 staticfiles/
 migrations/

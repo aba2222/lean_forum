@@ -1,8 +1,6 @@
 asgiref>=3.10.0
 Django>=5.2.7
-django5-mdeditor>=1.0.2
 gunicorn>=23.0.0
-Markdown>=3.10
 packaging>=25.0
 sqlparse>=0.5.3
 django-webpush>=0.3.6
@@ -11,3 +9,8 @@ djangorestframework
 djangorestframework-simplejwt
 django-cors-headers
 openai
+linkify-it-py>=2.1.0 
+markdown-it-py>=4.2.0 
+mdit-py-plugins>=0.6.1 
+mdurl>=0.1.2 
+uc-micro-py>=2.0.0

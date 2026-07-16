@@ -42,7 +42,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
-    'mdeditor',
+    'md_editor',
     'webpush',
     'forum',
 ]

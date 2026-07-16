@@ -70,8 +70,8 @@
     {% if comments %}
     <div class="comments-list">
         {% for comment in comments %}
-        <div class="comment-item mb-3 p-3 border rounded">
-            <div class="comment-header mb-2">
+        <div class="comment-item mb-3 border rounded">
+            <div class="comment-header border-bottom">
                 <strong><small class="text-muted">#{{ page_obj.start_index|add:forloop.counter0 }}</small> {{ comment.author.username }}</strong>
                 <span>
                     <small class="text-muted">{{ comment.created_at|date:"Y-m-d H:i" }}</small>
@@ -126,7 +126,6 @@
     <h3 class="mb-3">发表评论</h3>
     <form method="post" class="comment-form">
         {% csrf_token %}
-        {{ forms.media }}
         {{ forms.as_p }}
         <button type="submit" class="btn btn-primary">
             发表评论
@@ -183,17 +182,20 @@
     }
 
     .comment-item {
-        background-color: rgba(0, 0, 0, 0.02);
-    }
-
-    .comment-item:hover {
-        background-color: rgba(0, 0, 0, 0.04);
+        overflow: hidden;
     }
 
     .comment-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
+        background-color: #f6f8fa;
+        padding: 0.7rem;
+        margin: 0;
+    }
+
+    .comment-item article.markdown-body {
+        padding: 3rem;
     }
 
     .comment-form {
@@ -206,12 +208,8 @@
         border-bottom-color: #30363d;
     }
 
-    [data-bs-theme="dark"] .comment-item {
-        background-color: rgba(255, 255, 255, 0.05);
-    }
-
-    [data-bs-theme="dark"] .comment-item:hover {
-        background-color: rgba(255, 255, 255, 0.08);
+    [data-bs-theme="dark"] .comment-header {
+        background-color: #151b23
     }
 
     [data-bs-theme="dark"] .comment-form {
