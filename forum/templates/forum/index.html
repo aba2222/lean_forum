@@ -6,18 +6,20 @@
 {% block content %}
   <header class="mb-5">
     <h1 class="mb-2">社区首页</h1>
-    <p class="text-muted">评分或者发言</p>
+    <p class="text-muted">可以评分或者发言</p>
   </header>
 
   <section aria-labelledby="ratingItemsHeading" class="mb-5">
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 gap-3">
       <div>
         <h2 id="ratingItemsHeading" class="h4 mb-1">可打分的项目</h2>
-        <p class="text-muted mb-0">给项目打分</p>
+        <div class="d-flex align-items-center">
+          <p class="text-muted mb-0 me-3">给项目打分</p>
+          {% if items %}
+            <small class="text-muted">共 {{ items|length }} 个项目</small>
+          {% endif %}
+        </div>
       </div>
-      {% if items %}
-        <small class="text-muted">共 {{ items|length }} 个项目</small>
-      {% endif %}
     </div>
 
     {% if items %}
@@ -47,7 +49,12 @@
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 gap-3">
       <div>
         <h2 id="postsHeading" class="h4 mb-1">帖子</h2>
-        <p class="text-muted mb-0">最新帖子一览</p>
+        <div class="d-flex align-items-center">
+          <p class="text-muted mb-0 me-3">最新帖子一览</p>
+          {% if posts %}
+            <small class="text-muted">共 {{ post_count }} 个帖子</small>
+          {% endif %}
+        </div>
       </div>
       <a href="{% url 'post_create' %}" class="btn btn-primary">发新帖</a>
     </div>

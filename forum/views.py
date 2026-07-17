@@ -28,8 +28,9 @@ from forum.bots_manager import manager
 
 def index(request):
     items = Item.objects.all()
-    posts = Post.objects.all()[:5]
-    return render(request, 'forum/index.html', {'items': items, 'posts' : posts})
+    posts = Post.objects.all()[:6]
+    post_count = Post.objects.count()
+    return render(request, 'forum/index.html', {'items': items, 'posts' : posts, 'post_count': post_count})
 
 class PostListView(ListView):
     model = Post
