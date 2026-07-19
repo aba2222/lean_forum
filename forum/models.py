@@ -1,7 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 
-from .markdown import MarkdownModel
+from md_editor.markdown import MarkdownModel
 
 # Create your models here.
 
