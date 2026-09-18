@@ -55,6 +55,10 @@ class PostListView(ListView):
 @login_required
 def rate_item(request, item_id):
     item = get_object_or_404(Item, id=item_id)
+    user_rating = None
+    if request.user.is_authenticated:
+        user_rating = Rating.objects.filter(user=request.user, item=item).first()
+
     if request.method == 'POST':
         try:
             score = int(request.POST.get('score', ''))
@@ -64,14 +68,28 @@ def rate_item(request, item_id):
         if not 1 <= score <= 5:
             messages.error(request, '评分必须在 1-5 之间。')
             return redirect('rate_item', item_id=item.id)
-        Rating.objects.update_or_create(
+        _obj, created = Rating.objects.update_or_create(
             user=request.user,
             item=item,
             defaults={'score': score}
         )
+        if created:
+            messages.success(request, f'已为「{item.name}」打 {score} 星。')
+        else:
+            messages.success(request, f'已更新对「{item.name}」的评分为 {score} 星。')
         return redirect('index')
 
-    return render(request, 'forum/rate_item.html', {'name': item.name,'description': item.content_html})
+    avg = item.average_rating()
+    rating_count = item.rating_set.count()
+    # 模板里同时要用到 item.name 与正文，整对象一起传
+    return render(request, 'forum/rate_item.html', {
+        'item': item,
+        'average_rating': avg,
+        'rating_count': rating_count,
+        'user_rating': user_rating.score if user_rating else None,
+        'star_range': range(1, 6),
+    })
+
 
 @login_required
 def post_create(request):
