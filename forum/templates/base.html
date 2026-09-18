@@ -1,5 +1,5 @@
 <!doctype html>
-{% load static %}
+{% load static forum_extras %}
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
@@ -77,6 +77,26 @@
 
       .page-shell {
         min-height: calc(100vh - 8rem);
+      }
+
+      /* 头像：上传图与默认字母头像共用一套尺寸/圆角规则，可直接当图标用 */
+      .avatar-img,
+      .avatar-initial {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 auto;
+        object-fit: cover;
+        overflow: hidden;
+        color: #fff;
+        font-weight: 600;
+        line-height: 1;
+        vertical-align: middle;
+        user-select: none;
+      }
+
+      .avatar-img {
+        background-color: var(--bs-secondary-bg);
       }
 
       .back-to-top {
@@ -182,12 +202,17 @@
                   data-bs-toggle="dropdown"
                   aria-expanded="false"
                 >
-                  <span class="d-inline-flex align-items-center">
-                    {% include 'forum/icons/person-circle.svg' %}
-                  </span>
+                  {% avatar user 24 %}
                   <span>{{ user.username }}</span>
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end">
+                  <li>
+                    <a class="dropdown-item" href="{% url 'profile' user.username %}">我的主页</a>
+                  </li>
+                  <li>
+                    <a class="dropdown-item" href="{% url 'profile_edit' %}">编辑资料</a>
+                  </li>
+                  <li><hr class="dropdown-divider" /></li>
                   <li>
                     <a class="dropdown-item" href="{% url 'settings' %}">账户设置</a>
                   </li>

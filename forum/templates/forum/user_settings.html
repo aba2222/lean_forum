@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load webpush_notifications %}
+{% load webpush_notifications forum_extras %}
 
 {% block title %}账户设置{% endblock %}
 
@@ -9,6 +9,24 @@
 
 {% block content %}
   <div class="container mt-5">
+    <div class="mb-4">
+      <h6 class="fw-bold mb-2">
+        <span aria-hidden="true">{% include 'forum/icons/person-circle.svg' %}</span> 个人资料
+      </h6>
+      <p class="text-muted small mb-3">
+        设置头像、个人简介、个人网站和所在地，会展示在你的个人主页上。
+      </p>
+      <div class="d-flex align-items-center gap-3">
+        {% avatar user 48 %}
+        <div class="d-flex flex-wrap gap-2">
+          <a href="{% url 'profile_edit' %}" class="btn btn-outline-primary btn-sm">编辑资料</a>
+          <a href="{% url 'profile' user.username %}" class="btn btn-outline-secondary btn-sm"
+            >查看我的主页</a
+          >
+        </div>
+      </div>
+    </div>
+
     <div class="mb-4">
       <h6 class="fw-bold mb-2"><span>{% include 'forum/icons/bell.svg' %}</span> Web Push 通知</h6>
       <p class="text-muted small mb-3">允许浏览器接收论坛的实时通知（无需打开网页）</p>
