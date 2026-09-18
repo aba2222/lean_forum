@@ -1,12 +1,40 @@
 from django.conf import settings
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.template import Context, Template
 
-from .models import Post, Comment, Item, Rating
+import io
+import os
+import shutil
+import tempfile
+
+from PIL import Image
+
+from .avatars import AVATAR_MAX_BYTES, AVATAR_MAX_EDGE, fallback_color, fallback_initial
+from .models import Post, Comment, Item, Rating, Profile
 
 # Create your tests here.
+
+
+def image_bytes(size=(1200, 800), fmt='PNG', mode='RGB', color=(180, 40, 60)):
+    """生成一张真实可解码的图片，用于测试头像上传。"""
+    buffer = io.BytesIO()
+    Image.new(mode, size, color).save(buffer, fmt)
+    return buffer.getvalue()
+
+
+def upload_image(name='avatar.png', **kwargs):
+    fmt = kwargs.pop('fmt', 'PNG')
+    return SimpleUploadedFile(name, image_bytes(fmt=fmt, **kwargs), content_type='image/png')
+
+
+def oversize_png():
+    """构造一个体积超限、但仍能被 Pillow 正常解码的 PNG（IEND 之后补零）。"""
+    raw = image_bytes(size=(64, 64))
+    return raw + b'\0' * (AVATAR_MAX_BYTES + 1 - len(raw))
+
 
 class ForumTests(TestCase):
     def setUp(self):
@@ -176,3 +204,343 @@ class ForumTests(TestCase):
         self.assertEqual(User.objects.filter(username='newuser2').count(), 1)
         new_user = User.objects.get(username='newuser2')
         self.assertTrue(new_user.check_password('pw1'))
+
+
+class AvatarHelperTests(TestCase):
+    """默认字母头像的配色/首字，以及头像压缩归一化。"""
+
+    def test_fallback_color_is_stable_and_from_palette(self):
+        self.assertEqual(fallback_color('xiokuai'), fallback_color('xiokuai'))
+        self.assertNotEqual(fallback_color(''), '')
+
+    def test_fallback_initial(self):
+        self.assertEqual(fallback_initial('xiokuai'), 'X')
+        self.assertEqual(fallback_initial('  测试用户'), '测')
+        self.assertEqual(fallback_initial(''), '?')
+        self.assertEqual(fallback_initial(None), '?')
+
+    def test_normalize_shrinks_and_converts_to_jpeg(self):
+        from .avatars import normalize_avatar
+
+        normalized = normalize_avatar(upload_image(size=(1200, 800)))
+        image = Image.open(normalized)
+        self.assertEqual(image.format, 'JPEG')
+        self.assertLessEqual(max(image.size), AVATAR_MAX_EDGE)
+
+    def test_normalize_keeps_transparency_as_png(self):
+        from .avatars import normalize_avatar
+
+        normalized = normalize_avatar(
+            upload_image(name='a.png', size=(600, 600), mode='RGBA', color=(0, 0, 0, 0))
+        )
+        self.assertEqual(Image.open(normalized).format, 'PNG')
+
+    def test_normalize_rejects_non_image(self):
+        from django.core.exceptions import ValidationError
+
+        from .avatars import normalize_avatar
+
+        with self.assertRaises(ValidationError):
+            normalize_avatar(SimpleUploadedFile('x.png', b'not-an-image', content_type='image/png'))
+
+    def test_normalize_rejects_oversize(self):
+        from django.core.exceptions import ValidationError
+
+        from .avatars import normalize_avatar
+
+        payload = oversize_png()
+        self.assertGreater(len(payload), AVATAR_MAX_BYTES)
+
+        with self.assertRaises(ValidationError):
+            normalize_avatar(SimpleUploadedFile('big.png', payload, content_type='image/png'))
+
+
+class ProfileTests(TestCase):
+    """个人主页 + 头像功能。"""
+
+    @classmethod
+    def setUpClass(cls):
+        cls._media_root = tempfile.mkdtemp(prefix='lean_forum_test_media_')
+        cls._overrides = override_settings(
+            # 头像测试写到临时目录，别污染仓库里的 uploads/
+            MEDIA_ROOT=cls._media_root,
+            # 测试里不需要真实密码强度，默认 PBKDF2 会让每个用户多花近一秒
+            PASSWORD_HASHERS=['django.contrib.auth.hashers.MD5PasswordHasher'],
+        )
+        cls._overrides.enable()
+        super().setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        cls._overrides.disable()
+        shutil.rmtree(cls._media_root, ignore_errors=True)
+
+    def setUp(self):
+        self.user = User.objects.create_user('xiokuai', password='pw12345')
+        self.other = User.objects.create_user('friend', password='pw12345')
+        self.client.login(username='xiokuai', password='pw12345')
+
+    # ---- 模型与建档 ----
+
+    def test_new_user_gets_profile_automatically(self):
+        self.assertTrue(Profile.objects.filter(user=self.user).exists())
+        self.assertFalse(bool(self.user.profile.avatar))
+
+    def test_profile_view_creates_profile_when_missing(self):
+        # 模拟历史用户：表里有用户但还没有 Profile
+        Profile.objects.filter(user=self.other).delete()
+        resp = self.client.get(reverse('profile', kwargs={'username': 'friend'}))
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(Profile.objects.filter(user=self.other).exists())
+
+    # ---- 个人主页 ----
+
+    def test_profile_page_only_shows_this_user_content(self):
+        Post.objects.create(author=self.user, title='我的帖子', content='hi')
+        Post.objects.create(author=self.other, title='别人的帖子', content='hi')
+
+        resp = self.client.get(reverse('profile', kwargs={'username': 'xiokuai'}))
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, '我的帖子')
+        self.assertNotContains(resp, '别人的帖子')
+        self.assertEqual(resp.context['stats']['posts'], 1)
+        self.assertTrue(resp.context['is_self'])
+
+    def test_profile_page_visible_to_anonymous(self):
+        self.client.logout()
+        resp = self.client.get(reverse('profile', kwargs={'username': 'xiokuai'}))
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(resp.context['is_self'])
+
+    def test_profile_page_unknown_user_returns_404(self):
+        resp = self.client.get(reverse('profile', kwargs={'username': 'nobody'}))
+        self.assertEqual(resp.status_code, 404)
+
+    def test_profile_page_supports_chinese_username(self):
+        User.objects.create_user('测试用户', password='pw12345')
+        resp = self.client.get('/u/测试用户/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, '测试用户')
+
+    def test_profile_stats_count_posts_comments_collections_and_views(self):
+        post = Post.objects.create(author=self.user, title='帖子', content='x', views=7)
+        Post.objects.create(author=self.other, title='别人的', content='x', views=100)
+        Comment.objects.create(post=post, author=self.user, content='自评')
+        from .models import Collection
+
+        Collection.objects.create(owner=self.user, name='我的合集', content='')
+
+        resp = self.client.get(reverse('profile', kwargs={'username': 'xiokuai'}))
+
+        self.assertEqual(resp.context['stats']['posts'], 1)
+        self.assertEqual(resp.context['stats']['comments'], 1)
+        self.assertEqual(resp.context['stats']['collections'], 1)
+        self.assertEqual(resp.context['stats']['views'], 7)
+
+    def test_profile_tabs_and_pagination(self):
+        for index in range(12):
+            Post.objects.create(author=self.user, title=f'第{index}篇', content='x')
+
+        first = self.client.get(reverse('profile', kwargs={'username': 'xiokuai'}))
+        self.assertEqual(first.context['tab'], 'posts')
+        self.assertEqual(len(first.context['page_obj'].object_list), 10)
+
+        second = self.client.get('/u/xiokuai/?tab=posts&page=2')
+        self.assertEqual(len(second.context['page_obj'].object_list), 2)
+
+        comments_tab = self.client.get('/u/xiokuai/?tab=comments')
+        self.assertEqual(comments_tab.context['tab'], 'comments')
+
+        # 非法 tab 回落到帖子
+        fallback = self.client.get('/u/xiokuai/?tab=<script>')
+        self.assertEqual(fallback.context['tab'], 'posts')
+
+    # ---- 资料编辑 ----
+
+    def test_profile_edit_requires_login(self):
+        self.client.logout()
+        resp = self.client.get(reverse('profile_edit'))
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn(reverse('login'), resp.url)
+
+    def test_profile_edit_updates_fields_and_renders_markdown(self):
+        resp = self.client.post(
+            reverse('profile_edit'),
+            {
+                'content': '**你好**，我是 xiokuai',
+                'website': 'https://example.com',
+                'location': '杭州',
+            },
+        )
+
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(resp.url, reverse('profile', kwargs={'username': 'xiokuai'}))
+
+        profile = Profile.objects.get(user=self.user)
+        self.assertEqual(profile.location, '杭州')
+        self.assertEqual(profile.website, 'https://example.com')
+        self.assertIn('<strong>你好</strong>', profile.content_html)
+
+        page = self.client.get(reverse('profile', kwargs={'username': 'xiokuai'}))
+        self.assertContains(page, '<strong>你好</strong>', html=False)
+        self.assertContains(page, '杭州')
+
+    def test_profile_edit_rejects_too_long_bio(self):
+        resp = self.client.post(reverse('profile_edit'), {'content': '字' * 2001})
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn('content', resp.context['form'].errors)
+
+    def test_profile_edit_renders_markdown_editor(self):
+        resp = self.client.get(reverse('profile_edit'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'md_editor')
+
+    # ---- 头像 ----
+
+    def test_avatar_upload_is_saved_and_resized(self):
+        resp = self.client.post(
+            reverse('profile_edit'),
+            {'content': '', 'website': '', 'location': '', 'avatar': upload_image(size=(1600, 900))},
+        )
+        self.assertEqual(resp.status_code, 302)
+
+        profile = Profile.objects.get(user=self.user)
+        self.assertTrue(profile.avatar.name.startswith('avatars/u'))
+        self.assertTrue(os.path.exists(profile.avatar.path))
+
+        with Image.open(profile.avatar.path) as image:
+            self.assertLessEqual(max(image.size), AVATAR_MAX_EDGE)
+
+    def test_avatar_upload_rejects_non_image(self):
+        resp = self.client.post(
+            reverse('profile_edit'),
+            {
+                'content': '',
+                'website': '',
+                'location': '',
+                'avatar': SimpleUploadedFile('evil.png', b'hello', content_type='image/png'),
+            },
+        )
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn('avatar', resp.context['form'].errors)
+        self.assertFalse(bool(Profile.objects.get(user=self.user).avatar))
+
+    def test_avatar_upload_rejects_oversize(self):
+        resp = self.client.post(
+            reverse('profile_edit'),
+            {
+                'content': '',
+                'website': '',
+                'location': '',
+                'avatar': SimpleUploadedFile(
+                    'big.png', oversize_png(), content_type='image/png'
+                ),
+            },
+        )
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn('avatar', resp.context['form'].errors)
+        self.assertFalse(bool(Profile.objects.get(user=self.user).avatar))
+
+    def test_avatar_kept_when_form_submitted_without_new_file(self):
+        self.client.post(
+            reverse('profile_edit'),
+            {'content': '', 'website': '', 'location': '', 'avatar': upload_image()},
+        )
+        before = Profile.objects.get(user=self.user).avatar.name
+
+        self.client.post(reverse('profile_edit'), {'content': '只改简介', 'website': '', 'location': ''})
+
+        profile = Profile.objects.get(user=self.user)
+        self.assertEqual(profile.avatar.name, before)
+        self.assertTrue(os.path.exists(profile.avatar.path))
+        self.assertEqual(profile.content, '只改简介')
+
+    def test_avatar_replace_deletes_old_file(self):
+        self.client.post(
+            reverse('profile_edit'),
+            {'content': '', 'website': '', 'location': '', 'avatar': upload_image()},
+        )
+        first_path = Profile.objects.get(user=self.user).avatar.path
+        self.assertTrue(os.path.exists(first_path))
+
+        self.client.post(
+            reverse('profile_edit'),
+            {
+                'content': '',
+                'website': '',
+                'location': '',
+                'avatar': upload_image(size=(400, 400), color=(10, 90, 200)),
+            },
+        )
+
+        second_path = Profile.objects.get(user=self.user).avatar.path
+        self.assertNotEqual(first_path, second_path)
+        self.assertTrue(os.path.exists(second_path))
+        self.assertFalse(os.path.exists(first_path))
+
+    def test_avatar_clear_removes_avatar_and_file(self):
+        self.client.post(
+            reverse('profile_edit'),
+            {'content': '', 'website': '', 'location': '', 'avatar': upload_image()},
+        )
+        path = Profile.objects.get(user=self.user).avatar.path
+        self.assertTrue(os.path.exists(path))
+
+        self.client.post(
+            reverse('profile_edit'),
+            {'content': '', 'website': '', 'location': '', 'avatar-clear': 'on'},
+        )
+
+        profile = Profile.objects.get(user=self.user)
+        self.assertFalse(bool(profile.avatar))
+        self.assertFalse(os.path.exists(path))
+
+    # ---- 头像在页面上的呈现 ----
+
+    def test_avatar_tag_falls_back_to_initial(self):
+        rendered = Template('{% load forum_extras %}{% avatar u 40 %}').render(
+            Context({'u': self.user})
+        )
+        self.assertIn('avatar-initial', rendered)
+        self.assertIn('>X<', rendered)
+        self.assertIn('width: 40px', rendered)
+
+    def test_avatar_tag_renders_image_when_avatar_exists(self):
+        self.client.post(
+            reverse('profile_edit'),
+            {'content': '', 'website': '', 'location': '', 'avatar': upload_image()},
+        )
+        self.user.refresh_from_db()
+
+        rendered = Template('{% load forum_extras %}{% avatar u 32 %}').render(
+            Context({'u': self.user})
+        )
+
+        self.assertIn('avatar-img', rendered)
+        self.assertIn(settings.MEDIA_URL, rendered)
+        self.assertNotIn('avatar-initial', rendered)
+
+    def test_avatar_tag_without_user_renders_placeholder(self):
+        rendered = Template('{% load forum_extras %}{% avatar u 32 %}').render(Context({'u': None}))
+        self.assertIn('avatar-initial', rendered)
+        self.assertIn('匿名用户', rendered)
+
+    def test_navbar_and_post_pages_link_to_profile(self):
+        post = Post.objects.create(author=self.user, title='带头像的帖子', content='正文')
+        Comment.objects.create(post=post, author=self.other, content='评论')
+
+        profile_url = reverse('profile', kwargs={'username': 'xiokuai'})
+
+        home = self.client.get(reverse('index'))
+        self.assertContains(home, profile_url)
+
+        detail = self.client.get(reverse('post_detail', kwargs={'post_id': post.id}))
+        self.assertContains(detail, profile_url)
+        self.assertContains(
+            detail, reverse('profile', kwargs={'username': 'friend'})
+        )
+        self.assertContains(detail, 'avatar-initial')
