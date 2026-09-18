@@ -29,8 +29,16 @@
             <article class="card h-100 shadow-sm">
               <div class="card-body d-flex flex-column">
                 <h3 class="h5 card-title">{{ item.name }}</h3>
+                <p class="card-subtitle small text-muted mb-2" aria-hidden="true">
+                  {% for i in star_range %}
+                    {% with item.avg_score|default:0 as avg %}
+                      <span class="star {% if i > avg %}is-muted{% endif %}" aria-hidden="true">★</span>
+                    {% endwith %}
+                  {% endfor %}
+                </p>
                 <p class="card-text text-muted mb-4">
-                  平均分：{{ item.average_rating|floatformat:1 }}
+                  平均分：{{ item.avg_score|default:0 | floatformat:1 }}
+                  <small class="ms-1">({{ item.rating_count }} 人评)</small>
                 </p>
                 <a href="{% url 'rate_item' item.id %}" class="btn btn-primary mt-auto">
                   去打分
@@ -41,7 +49,10 @@
         {% endfor %}
       </div>
     {% else %}
-      <div class="alert alert-info">暂时没有可打分项目</div>
+      <div class="alert alert-info d-flex align-items-center gap-2">
+        <span aria-hidden="true">{% include 'forum/icons/info-circle.svg' %}</span>
+        <div>暂时没有可打分项目，管理员可在后台新增 Item 条目。</div>
+      </div>
     {% endif %}
   </section>
 
@@ -56,7 +67,10 @@
           {% endif %}
         </div>
       </div>
-      <a href="{% url 'post_create' %}" class="btn btn-primary">发新帖</a>
+      <div class="d-flex gap-2">
+        <a href="{% url 'post_list' %}" class="btn btn-outline-secondary">查看全部</a>
+        <a href="{% url 'post_create' %}" class="btn btn-primary">发新帖</a>
+      </div>
     </div>
 
     {% if posts %}
@@ -74,7 +88,14 @@
                     >{{ post.author.username }}</a
                   >
                 </p>
-                <p class="card-text text-muted mb-4">{{ post.created_at | naturaltime }}</p>
+                <p class="card-text text-muted mb-4 d-flex align-items-center gap-2">
+                  <span aria-hidden="true">{% include 'forum/icons/calendar.svg' %}</span>
+                  {{ post.created_at | naturaltime }}
+                  <span class="ms-2 d-inline-flex align-items-center gap-1" aria-hidden="true">
+                    {% include 'forum/icons/eye.svg' %}
+                  </span>
+                  <span>{{ post.views }}</span>
+                </p>
                 <a href="{% url 'post_detail' post.id %}" class="btn btn-outline-primary mt-auto">
                   查看详情
                 </a>
@@ -84,7 +105,10 @@
         {% endfor %}
       </div>
     {% else %}
-      <div class="alert alert-info">暂时没有帖子</div>
+      <div class="alert alert-info d-flex align-items-center gap-2">
+        <span aria-hidden="true">{% include 'forum/icons/info-circle.svg' %}</span>
+        <div>暂时没有帖子，<a href="{% url 'post_create' %}" class="alert-link">点击这里</a>发布第一篇吧！</div>
+      </div>
     {% endif %}
   </section>
 {% endblock %}
