@@ -18,36 +18,13 @@
         } catch (_) {}
       })();
     </script>
-    <link
-      id="github-markdown-light"
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.9.0/github-markdown-light.min.css"
-      referrerpolicy="no-referrer"
-    />
-    <link
-      id="github-markdown-dark"
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.9.0/github-markdown-dark.min.css"
-      referrerpolicy="no-referrer"
-    />
 
-    <link
-      id="highlightjs-light"
-      rel="stylesheet"
-      href="https://unpkg.com/@highlightjs/cdn-assets@11.11.1/styles/default.min.css"
-    />
-    <link
-      id="highlightjs-dark"
-      rel="stylesheet"
-      href="https://unpkg.com/@highlightjs/cdn-assets@11.11.1/styles/github-dark.min.css"
-    />
-    <script src="https://unpkg.com/@highlightjs/cdn-assets@11.11.1/highlight.min.js"></script>
-
-    <script
-      id="MathJax-script"
-      async
-      src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"
-    ></script>
+    {% comment %}
+      代码高亮与数学公式统一交给洛谷那套（Prism + KaTeX），
+      已发布内容的渲染器见 md_editor/static/md_editor/luogu-render.js。
+      所以这里不再加载 highlight.js / github-markdown-css / MathJax：
+      三套东西并存只会让「预览」和「发布后」的排版各说各话。
+    {% endcomment %}
 
     <link
       href="https://cdn.jsdelivr.net.cn/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
@@ -65,14 +42,6 @@
         transition:
           background-color 0.2s ease,
           color 0.2s ease;
-      }
-
-      .markdown-body {
-        box-sizing: border-box;
-        min-width: 200px;
-        max-width: 980px;
-        margin: 0 auto;
-        padding: 45px;
       }
 
       .page-shell {
@@ -120,20 +89,8 @@
         white-space: nowrap;
       }
 
-      @media (max-width: 767px) {
-        .markdown-body {
-          padding: 15px;
-        }
-      }
-
       [data-bs-theme='dark'] body {
         background-color: #0d1117;
-      }
-
-      [data-bs-theme='dark'] .markdown-body pre,
-      [data-bs-theme='dark'] .markdown-body code {
-        background: #0d1117 !important;
-        color: #c9d1d9 !important;
       }
     </style>
     {% block extra_head %}{% endblock %}
@@ -273,8 +230,6 @@
     <script>
       const themeToggle = document.getElementById('theme-toggle');
       const themeIcon = document.getElementById('theme-icon');
-      const markdownLight = document.getElementById('github-markdown-light');
-      const markdownDark = document.getElementById('github-markdown-dark');
       const prefersDarkMedia = window.matchMedia('(prefers-color-scheme: dark)');
       const btn = document.getElementById('back-to-top');
 
@@ -292,28 +247,10 @@
         }
       }
 
-      function updateMarkdownTheme(isDark) {
-        if (markdownLight && markdownDark) {
-          markdownLight.disabled = isDark;
-          markdownDark.disabled = !isDark;
-        }
-      }
-
-      function updateHighlightTheme(isDark) {
-        const highlightLight = document.getElementById('highlightjs-light');
-        const highlightDark = document.getElementById('highlightjs-dark');
-        if (highlightLight && highlightDark) {
-          highlightLight.disabled = isDark;
-          highlightDark.disabled = !isDark;
-        }
-      }
-
       function syncTheme(theme) {
         const isDark = theme === 'dark';
         document.documentElement.setAttribute('data-bs-theme', theme);
         updateThemeIcon(isDark);
-        updateMarkdownTheme(isDark);
-        updateHighlightTheme(isDark);
       }
 
       const initialTheme = getTheme();
@@ -346,8 +283,13 @@
         btn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
       }
     </script>
-    <script>
-      hljs.highlightAll();
-    </script>
+
+    {% comment %}
+      洛谷 Markdown 资源：编辑器工作区与已发布内容共用一份加载器（内部按 profile 去重）。
+      defer 保证两者都在解析完成后、DOMContentLoaded 之前按顺序执行；
+      没有对应元素时加载器会直接跳过，不会白白下载几百 KB。
+    {% endcomment %}
+    <script defer src="{% static 'md_editor/luogu-loader.js' %}"></script>
+    <script defer src="{% static 'md_editor/luogu-render.js' %}"></script>
   </body>
 </html>

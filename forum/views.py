@@ -71,7 +71,8 @@ def rate_item(request, item_id):
         )
         return redirect('index')
 
-    return render(request, 'forum/rate_item.html', {'name': item.name,'description': item.content_html})
+    # 模板里同时要用到 name 与 Markdown 原文，直接传整个对象
+    return render(request, 'forum/rate_item.html', {'item': item})
 
 @login_required
 def post_create(request):
