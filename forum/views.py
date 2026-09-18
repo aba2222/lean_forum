@@ -1,3 +1,4 @@
+import logging
 import re, random
 from django.db.models import F, Sum
 from django.db.models import Q
@@ -25,6 +26,8 @@ from .utils import send_group_notification
 from forum.form import MDEditorCommentForm, MDEditorModelForm, CollectionForm, ProfileForm
 from forum.models import Comment, Item, Post, Rating, Collection, CollectionPost, Profile
 from forum.bots_manager import manager
+
+logger = logging.getLogger(__name__)
 
 # Create your views here.
 
@@ -85,12 +88,20 @@ def post_create(request):
             for mention in mentions:
                 manager.at_bot(mention, post)
 
-            send_group_notification("webpush_new_posts", "新帖子发布了，快去看看吧！", "https://lforum.dpdns.org/posts/")
+            try:
+                send_group_notification("webpush_new_posts", "新帖子发布了，快去看看吧！", "https://lforum.dpdns.org/posts/")
+            except Exception:
+                logger.exception("发送 webpush 通知失败")
 
+            messages.success(request, f'帖子「{post.title}」发布成功！')
             return redirect('post_list')
         else:
-            print(forms.errors)
-    
+            logger.warning("post_create 表单校验失败: user=%s errors=%s", request.user.id, forms.errors)
+            messages.error(request, '帖子内容校验失败，请检查必填项后重试。')
+            for field, errs in forms.errors.items():
+                for err in errs:
+                    messages.warning(request, f'[{field}] {err}')
+
     return render(request, 'forum/post_create.html', {'form': forms})
 
 class PostDetailView(View):
@@ -127,25 +138,26 @@ class PostDetailView(View):
 
 class LoginView(View):
     def get(self, request):
-        return render(request, 'forum/login.html')  # GET 请求时返回登录页面
+        return render(request, 'forum/login.html')
 
-    def post(self,request):
+    def post(self, request):
         username = request.POST.get("username")
         password = request.POST.get("password")
         user = authenticate(request, username=username, password=password)
-        
+
         if user is not None:
             login(request, user)
+            messages.info(request, f'欢迎回来，{user.username}！')
             return redirect('index')
         else:
-            # 返回一个“无效登录”错误消息
             messages.error(request, '用户名或密码错误')
-            return redirect('login')  # 重定向回登录页面，保持表单和错误信息
+            return redirect('login')
+
 
 class RegisterView(View):
     def get(self, request):
         return render(request, 'forum/register.html')
-    
+
     def post(self, request):
         username = request.POST.get('username')
         password = request.POST.get('password')
@@ -171,11 +183,13 @@ class RegisterView(View):
             if user is not None:
                 login(request, user)
 
-            messages.success(request, '注册成功！')
+            messages.success(request, '注册成功！欢迎加入 Lean Forum')
             return redirect('index')
         except Exception as e:
+            logger.exception("注册失败 user=%s", username)
             messages.error(request, f'注册失败：{str(e)}')
             return redirect('register')
+
 
 class PostDeleteView(LoginRequiredMixin, DeleteView):
     login_url = "login"
@@ -193,7 +207,11 @@ class PostDeleteView(LoginRequiredMixin, DeleteView):
         if confirm_title != self.object.title:
             messages.error(request, '确认标题不匹配，删除已取消。')
             return redirect('post_detail', post_id=self.object.pk)
-        return super().post(request, *args, **kwargs)
+        title = self.object.title
+        result = super().post(request, *args, **kwargs)
+        messages.success(request, f'帖子「{title}」已成功删除。')
+        return result
+
 
 @login_required
 def comment_delete_view(request, comment_id):
@@ -205,6 +223,7 @@ def comment_delete_view(request, comment_id):
             request.session.pop('comment_delete_expected', None)
             post_id = comment.post.id
             comment.delete()
+            messages.success(request, '评论已删除。')
             return redirect('post_detail', post_id=post_id)
         messages.error(request, '验证答案不正确，删除已取消。')
         return redirect('post_detail', post_id=comment.post.id)
@@ -214,28 +233,46 @@ def comment_delete_view(request, comment_id):
         'comment': comment, 'a': a, 'b': b, 'answer': a + b,
     })
 
+
 @login_required
 def post_edit_view(request, post_id):
     post = get_object_or_404(Post, id=post_id, author=request.user)
     form = MDEditorModelForm(request.POST or None, instance=post, user=request.user)
-    if request.method == 'POST' and form.is_valid():
-        form.save()
-        return redirect('post_detail', post_id=post.id)
+    if request.method == 'POST':
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'帖子「{post.title}」已更新。')
+            return redirect('post_detail', post_id=post.id)
+        logger.warning(
+            "post_edit_view 表单校验失败: post=%s user=%s errors=%s",
+            post_id, request.user.id, form.errors,
+        )
+        messages.error(request, '修改失败，请检查必填项。已保留您当前的输入。')
     return render(request, 'forum/post_edit.html', {'form': form, 'post': post})
+
 
 @login_required
 def comment_edit_view(request, comment_id):
     comment = get_object_or_404(Comment, id=comment_id, author=request.user)
     form = MDEditorCommentForm(request.POST or None, instance=comment, user=request.user, post=comment.post)
-    if request.method == 'POST' and form.is_valid():
-        form.save()
-        return redirect('post_detail', post_id=comment.post.id)
+    if request.method == 'POST':
+        if form.is_valid():
+            form.save()
+            messages.success(request, '评论已更新。')
+            return redirect('post_detail', post_id=comment.post.id)
+        logger.warning(
+            "comment_edit_view 表单校验失败: comment=%s user=%s errors=%s",
+            comment_id, request.user.id, form.errors,
+        )
+        messages.error(request, '评论修改失败，请检查输入内容。')
     return render(request, 'forum/comment_edit.html', {'form': form, 'comment': comment})
+
 
 @login_required
 def user_settings_view(request):
-    webpush = {"group": "webpush_new_posts" } 
-    return render(request, "forum/user_settings.html",  {"webpush" : webpush})
+    webpush = {"group": "webpush_new_posts"}
+    return render(request, "forum/user_settings.html", {"webpush": webpush})
+
 
 @login_required
 def user_delete_view(request):
@@ -247,15 +284,19 @@ def user_delete_view(request):
         if user is not None and username == request.user.username and confirm_text == '我要删除账户':
             logout(request)
             user.delete()
+            messages.info(request, '账户已成功删除，再见！')
             return redirect('index')
         else:
             messages.error(request, '账户信息不匹配，删除已取消。')
             return redirect('settings')
 
+
 @require_POST
 def logout_view(request):
     logout(request)
+    messages.info(request, '您已安全登出。')
     return redirect('login')
+
 
 def about_view(request):
     return render(request, "forum/about.html")
@@ -280,7 +321,13 @@ def collection_create(request):
         form = CollectionForm(request.POST, user=request.user)
         if form.is_valid():
             form.save()
+            messages.success(request, f'合集「{form.instance.name}」已创建。')
             return redirect('collection_list')
+        logger.warning(
+            "collection_create 表单校验失败: user=%s errors=%s",
+            request.user.id, form.errors,
+        )
+        messages.error(request, '合集创建失败，请检查输入内容。')
     return render(request, 'forum/collection_form.html', {'form': form})
 
 
@@ -304,7 +351,13 @@ def collection_edit(request, collection_id):
         form = CollectionForm(request.POST, instance=collection, user=request.user)
         if form.is_valid():
             form.save()
+            messages.success(request, f'合集「{collection.name}」已更新。')
             return redirect('collection_detail', collection_id=collection.id)
+        logger.warning(
+            "collection_edit 表单校验失败: collection=%s errors=%s",
+            collection_id, form.errors,
+        )
+        messages.error(request, '合集修改失败，请检查输入内容。')
     return render(request, 'forum/collection_form.html', {'form': form, 'title': '编辑合集'})
 
 
@@ -323,7 +376,10 @@ class CollectionDeleteView(LoginRequiredMixin, DeleteView):
         if confirm_name != self.object.name:
             messages.error(request, '确认名称不匹配，删除已取消。')
             return redirect('collection_detail', collection_id=self.object.pk)
-        return super().post(request, *args, **kwargs)
+        name = self.object.name
+        result = super().post(request, *args, **kwargs)
+        messages.success(request, f'合集「{name}」已成功删除。')
+        return result
 
 
 @login_required
@@ -336,6 +392,7 @@ def collection_manage(request, collection_id):
 
         if action == 'remove' and cp_id:
             CollectionPost.objects.filter(id=cp_id, collection=collection).delete()
+            messages.info(request, '已将帖子从合集中移除。')
 
         elif action == 'move_up' and cp_id:
             cp = get_object_or_404(CollectionPost, id=cp_id, collection=collection)
@@ -344,6 +401,7 @@ def collection_manage(request, collection_id):
                 prev.order, cp.order = cp.order, prev.order
                 prev.save()
                 cp.save()
+                messages.info(request, '已上移顺序。')
 
         elif action == 'move_down' and cp_id:
             cp = get_object_or_404(CollectionPost, id=cp_id, collection=collection)
@@ -352,6 +410,7 @@ def collection_manage(request, collection_id):
                 nxt.order, cp.order = cp.order, nxt.order
                 nxt.save()
                 cp.save()
+                messages.info(request, '已下移顺序。')
 
         elif action == 'reorder':
             order_ids = request.POST.get('order', '')
@@ -362,18 +421,23 @@ def collection_manage(request, collection_id):
 
         elif action == 'add':
             post_ids = request.POST.getlist('post_id')
+            added = 0
             for pid in post_ids:
                 post = get_object_or_404(Post, id=pid, author=request.user)
                 if not CollectionPost.objects.filter(collection=collection, post=post).exists():
                     max_order = collection.collection_posts.aggregate(db_models.Max('order'))['order__max'] or 0
                     CollectionPost.objects.create(collection=collection, post=post, order=max_order + 1)
+                    added += 1
+            if added:
+                messages.success(request, f'已添加 {added} 篇帖子到合集。')
+            else:
+                messages.info(request, '没有新帖子被添加。')
 
         return redirect('collection_manage', collection_id=collection.id)
 
     collection_posts = collection.collection_posts.select_related('post').all()
-    # Available posts: authored by user and not already in this collection
     existing_ids = collection.collection_posts.values_list('post_id', flat=True)
-    available_posts = Post.objects.filter(author=request.user).exclude(id__in=existing_ids)
+    available_posts = Post.objects.filter(author=request.user).exclude(id__in=existing_ids).order_by('-created_at')
 
     return render(request, 'forum/collection_manage.html', {
         'collection': collection,
@@ -429,12 +493,16 @@ def post_add_to_collection(request, post_id):
         if not CollectionPost.objects.filter(collection=collection, post=post).exists():
             max_order = collection.collection_posts.aggregate(db_models.Max('order'))['order__max'] or 0
             CollectionPost.objects.create(collection=collection, post=post, order=max_order + 1)
+            messages.success(request, f'帖子已添加到合集「{collection.name}」。')
+        else:
+            messages.info(request, '帖子已在该合集中，无需重复添加。')
         return redirect('post_detail', post_id=post.id)
 
     return render(request, 'forum/post_add_to_collection.html', {
         'post': post,
         'collections': collections,
     })
+
 
 class UserRegistrationView(APIView):
     permission_classes = [AllowAny]
@@ -446,6 +514,9 @@ class UserRegistrationView(APIView):
             return Response({
               "message": "User registered successfully"
             }, status=status.HTTP_201_CREATED)
+        logger.warning(
+            "UserRegistrationView API 校验失败: errors=%s", serializer.errors,
+        )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
