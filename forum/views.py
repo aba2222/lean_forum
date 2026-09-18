@@ -29,10 +29,19 @@ from forum.bots_manager import manager
 # Create your views here.
 
 def index(request):
-    items = Item.objects.all()
-    posts = Post.objects.order_by('-created_at')[:6]
+    items = Item.objects.annotate(
+        avg_score=Avg('rating__score'),
+        rating_count=Count('rating'),
+    )
+    posts = Post.objects.select_related('author').order_by('-created_at')[:6]
     post_count = Post.objects.count()
-    return render(request, 'forum/index.html', {'items': items, 'posts' : posts, 'post_count': post_count})
+    return render(request, 'forum/index.html', {
+        'items': items,
+        'posts': posts,
+        'post_count': post_count,
+        'star_range': range(1, 6),
+    })
+
 
 class PostListView(ListView):
     model = Post
@@ -57,14 +66,6 @@ class PostListView(ListView):
         context["q"] = self.request.GET.get('q', '').strip()
         context["post_count"] = self.get_queryset().count()
         return context
-
-    def get_queryset(self):
-       query = self.request.GET.get("q", "").strip()
-       if not query:
-           return Post.objects.all()
-       return Post.objects.filter(
-           Q(title__icontains=query) | Q(content__icontains=query)
-       )
 
 
 @login_required
@@ -287,12 +288,15 @@ def custom_500_view(request, exception=None):
 # ---- Collection views ----
 
 def collection_list(request):
-    collections = Collection.objects.select_related('owner').all()
+    collections = Collection.objects.select_related('owner').annotate(
+        post_count=Count('collection_posts'),
+    ).order_by('-created_at')
     paginator = Paginator(collections, 20)
     page_obj = paginator.get_page(request.GET.get('page', 1))
     return render(request, 'forum/collection_list.html', {
         'collections': page_obj,
         'page_obj': page_obj,
+        'collection_count': paginator.count,
     })
 
 
@@ -316,6 +320,7 @@ def collection_detail(request, collection_id):
         'collection': collection,
         'collection_posts': page_obj,
         'page_obj': page_obj,
+        'post_count': paginator.count,
     })
 
 
@@ -412,6 +417,7 @@ def collection_post_detail(request, collection_id, post_id):
 
     prev_cp = collection.collection_posts.filter(order__lt=current_cp.order).last()
     next_cp = collection.collection_posts.filter(order__gt=current_cp.order).first()
+    all_cps = collection.collection_posts.select_related('post').all()
 
     forms = None
     if request.user.is_authenticated:
