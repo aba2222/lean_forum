@@ -7,14 +7,19 @@
     <title>{% block title %}Lean Forum{% endblock %}</title>
     <meta name="color-scheme" content="light dark" />
     <script>
-      // 首屏尽早设置主题，避免 FOUC；详细切换逻辑统一由 body 末尾 syncTheme 处理
+      // 全局 getTheme：供 head 内样式表切换 + body 末尾主题逻辑共用
+      // 尽早设置 data-bs-theme，避免 FOUC；详细切换逻辑由 body 末尾 syncTheme 统一处理
       (function () {
+        var prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
+        window.getTheme = function () {
+          try {
+            var saved = localStorage.getItem('theme');
+            if (saved === 'light' || saved === 'dark') return saved;
+          } catch (_) {}
+          return prefersDark.matches ? 'dark' : 'light';
+        };
         try {
-          var saved = localStorage.getItem('theme');
-          var t = saved === 'light' || saved === 'dark'
-            ? saved
-            : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-          document.documentElement.setAttribute('data-bs-theme', t);
+          document.documentElement.setAttribute('data-bs-theme', window.getTheme());
         } catch (_) {}
       })();
     </script>
@@ -59,12 +64,24 @@
     <style>
       :root {
         color-scheme: light dark;
+        --bg-light: #ffffff;
+        --bg-dark: #0d1117;
+      }
+
+      html,
+      body {
+        background-color: var(--bg-light);
       }
 
       body {
         transition:
-          background-color 0.2s ease,
-          color 0.2s ease;
+          background-color 280ms cubic-bezier(0.4, 0, 0.2, 1),
+          color 280ms cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      [data-bs-theme='dark'] html,
+      [data-bs-theme='dark'] body {
+        background-color: var(--bg-dark);
       }
 
       .markdown-body {
@@ -107,8 +124,8 @@
         height: 44px;
         opacity: 0.9;
         transition:
-          opacity 0.2s ease,
-          transform 0.2s ease;
+          opacity 220ms cubic-bezier(0.4, 0, 0.2, 1),
+          transform 220ms cubic-bezier(0.4, 0, 0.2, 1);
       }
 
       .back-to-top:hover {
@@ -134,7 +151,38 @@
       [data-bs-theme='dark'] .markdown-body code {
         background: #0d1117 !important;
         color: #c9d1d9 !important;
+      .theme-reveal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: 9999;
+        pointer-events: none;
+        background-color: var(--theme-reveal-color, var(--bg-light));
+        clip-path: circle(0 at var(--reveal-x, 100vw) var(--reveal-y, 0px));
+        transform: translateZ(0);
+        will-change: clip-path, opacity;
       }
+
+      .theme-reveal.is-playing {
+        animation: theme-reveal-expand 520ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+      }
+
+      @keyframes theme-reveal-expand {
+        0% {
+          clip-path: circle(0 at var(--reveal-x, 100vw) var(--reveal-y, 0px));
+          opacity: 1;
+        }
+        55% {
+          opacity: 1;
+        }
+        100% {
+          clip-path: circle(150vmax at var(--reveal-x, 100vw) var(--reveal-y, 0px));
+          opacity: 0;
+        }
+      }
+
     </style>
     {% block extra_head %}{% endblock %}
   </head>
@@ -266,7 +314,7 @@
 
     <script
       src="https://cdn.jsdelivr.net.cn/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
-      integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+      integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN76jIeHz"
       crossorigin="anonymous"
     ></script>
 
@@ -278,10 +326,53 @@
       const prefersDarkMedia = window.matchMedia('(prefers-color-scheme: dark)');
       const btn = document.getElementById('back-to-top');
 
-      function getTheme() {
-        const saved = localStorage.getItem('theme');
-        if (saved === 'light' || saved === 'dark') return saved;
-        return prefersDarkMedia.matches ? 'dark' : 'light';
+      function getThemeBg(theme) {
+        return theme === 'dark'
+          ? getComputedStyle(document.documentElement).getPropertyValue('--bg-dark').trim() || '#0d1117'
+          : getComputedStyle(document.documentElement).getPropertyValue('--bg-light').trim() || '#ffffff';
+      }
+
+      var _revealLock = false;
+
+      function playThemeReveal(next, originEl) {
+        if (_revealLock) {
+          syncTheme(next);
+          return;
+        }
+        _revealLock = true;
+        var prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (prefersReduced || !originEl || !document.body) {
+          syncTheme(next);
+          _revealLock = false;
+          return;
+        }
+        var rect = originEl.getBoundingClientRect();
+        var cx = rect.left + rect.width / 2;
+        var cy = rect.top + rect.height / 2;
+
+        var reveal = document.createElement('div');
+        reveal.className = 'theme-reveal';
+        reveal.style.setProperty('--reveal-x', cx + 'px');
+        reveal.style.setProperty('--reveal-y', cy + 'px');
+        reveal.style.setProperty('--theme-reveal-color', getThemeBg(next));
+        document.body.appendChild(reveal);
+
+        // 强制 reflow
+        reveal.offsetHeight;
+        reveal.classList.add('is-playing');
+
+        // 55% 处切换主题，此时 body transition 与圆圈扩散剩余动画同步
+        var switchTimer = window.setTimeout(function () {
+          syncTheme(next);
+        }, 286);
+
+        var cleanup = function () {
+          window.clearTimeout(switchTimer);
+          if (reveal.parentNode) reveal.parentNode.removeChild(reveal);
+          _revealLock = false;
+        };
+        reveal.addEventListener('animationend', cleanup, { once: true });
+        window.setTimeout(cleanup, 1100);
       }
 
       function updateThemeIcon(isDark) {
@@ -309,28 +400,28 @@
       }
 
       function syncTheme(theme) {
-        const isDark = theme === 'dark';
+        var isDark = theme === 'dark';
         document.documentElement.setAttribute('data-bs-theme', theme);
         updateThemeIcon(isDark);
         updateMarkdownTheme(isDark);
         updateHighlightTheme(isDark);
       }
 
-      const initialTheme = getTheme();
+      var initialTheme = getTheme();
       syncTheme(initialTheme);
 
       if (themeToggle) {
-        themeToggle.addEventListener('click', (e) => {
+        themeToggle.addEventListener('click', function (e) {
           e.preventDefault();
-          const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
-          const next = isDark ? 'light' : 'dark';
+          var isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+          var next = isDark ? 'light' : 'dark';
           localStorage.setItem('theme', next);
-          syncTheme(next);
+          playThemeReveal(next, themeToggle);
         });
       }
 
       if (prefersDarkMedia.addEventListener) {
-        prefersDarkMedia.addEventListener('change', () => {
+        prefersDarkMedia.addEventListener('change', function () {
           if (!localStorage.getItem('theme')) {
             syncTheme(getTheme());
           }
@@ -338,12 +429,14 @@
       }
 
       if (btn) {
-        const toggleBackToTop = () => {
+        var toggleBackToTop = function () {
           btn.classList.toggle('d-none', window.scrollY <= 300);
         };
         window.addEventListener('scroll', toggleBackToTop, { passive: true });
         toggleBackToTop();
-        btn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+        btn.addEventListener('click', function () {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
       }
     </script>
     <script>
