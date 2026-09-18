@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% block title %}404 — 页面走丢了{% endblock %}
+
+{% block content %}
+  <div class="row justify-content-center py-5">
+    <div class="col-md-8 col-lg-6 text-center">
+      <div class="mb-4">
+        <div class="display-1 fw-bold text-primary mb-2" aria-hidden="true">404</div>
+        <h1 class="h3 mb-3">页面走丢了</h1>
+        <p class="text-muted mb-4">
+          您要访问的页面不存在、已被移除，或者链接有误。
+        </p>
+      </div>
+
+      <div class="d-flex flex-wrap justify-content-center gap-2 mb-5">
+        <a href="{% url 'index' %}" class="btn btn-primary">
+          <span class="d-inline-flex align-items-center gap-1">
+            <span aria-hidden="true">{% include 'forum/icons/house.svg' %}</span>
+            <span>返回首页</span>
+          </span>
+        </a>
+        <a href="{% url 'post_list' %}" class="btn btn-outline-secondary">
+          浏览文章
+        </a>
+      </div>
+
+      <div class="card border-0 bg-body-tertiary shadow-sm">
+        <div class="card-body text-start">
+          <h2 class="h6 mb-3">您可以尝试：</h2>
+          <ul class="mb-0 text-muted small">
+            <li class="mb-1">检查地址栏中的链接是否拼写正确</li>
+            <li class="mb-1">使用顶部导航栏前往其他页面</li>
+            <li>使用顶部导航栏的搜索框查找您需要的内容</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

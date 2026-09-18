@@ -1,6 +1,6 @@
+import logging
 import re, random
-from django.db.models import F, Sum
-from django.db.models import Q
+from django.db.models import Avg, Count, F, Q, Sum
 from django.db import models as db_models
 from django.http import JsonResponse
 from django.urls import reverse_lazy
@@ -38,10 +38,24 @@ class PostListView(ListView):
     model = Post
     template_name = 'forum/post_list.html'
     paginate_by = 20
+    context_object_name = 'posts'
+
+    def get_queryset(self):
+        qs = Post.objects.select_related('author').order_by('-created_at')
+        q = self.request.GET.get('q', '').strip()
+        if q:
+            qs = qs.filter(
+                Q(title__icontains=q)
+                | Q(content__icontains=q)
+                | Q(author__username__icontains=q)
+            )
+        return qs
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["now"] = timezone.now()
+        context["q"] = self.request.GET.get('q', '').strip()
+        context["post_count"] = self.get_queryset().count()
         return context
 
     def get_queryset(self):
@@ -51,6 +65,7 @@ class PostListView(ListView):
        return Post.objects.filter(
            Q(title__icontains=query) | Q(content__icontains=query)
        )
+
 
 @login_required
 def rate_item(request, item_id):
@@ -259,6 +274,14 @@ def logout_view(request):
 
 def about_view(request):
     return render(request, "forum/about.html")
+
+
+def custom_404_view(request, exception=None):
+    return render(request, "404.html", status=404)
+
+
+def custom_500_view(request, exception=None):
+    return render(request, "500.html", status=500)
 
 
 # ---- Collection views ----
