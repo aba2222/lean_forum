@@ -13,6 +13,8 @@
 
 - Markdown 编辑器（支持 LaTeX 数学公式）
 - 帖子发布、评论、删除
+- 个人主页与头像（支持上传头像，未设置时回退为字母头像）
+- 文章合集
 - AI 机器人（发帖时 `@bot` 召唤）
 - Web Push 浏览器推送通知
 - 明暗主题切换（跟随系统 / 手动切换）
@@ -136,7 +138,12 @@ GET /api/posts/{id}/
 | 变量 | 说明 | 默认值 |
 |------|------|--------|
 | `SECRET_KEY` | Django 密钥 | 内置开发密钥 |
-| `DEBUG` | 调试模式 | `0` |
+| `DEBUG` | 调试模式；只有 `1`/`true`/`yes`/`on` 才算开启 | `0` |
+| `SERVE_MEDIA` | 由 Django 直接提供 `/media/` 上传文件（头像、帖子图片）；已用 nginx/CDN 托管 `/media/` 时设为 `0` | `1` |
+| `SERVE_STATIC` | 由 Django 直接提供 `/static/`（需先 `collectstatic`）；已用前置服务器托管时设为 `0` | `1` |
+
+> 本地开发请设置 `DEBUG=1`。开启调试后 `runserver` 会直接从各 app 的 `static/` 目录
+> 提供静态文件（含 Markdown 编辑器），无需先跑 `collectstatic`。
 
 ## 测试
 
