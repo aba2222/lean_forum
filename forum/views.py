@@ -261,6 +261,16 @@ def about_view(request):
     return render(request, "forum/about.html")
 
 
+# ---- Error handlers ----
+
+def custom_404_view(request, exception=None):
+    return render(request, "404.html", status=404)
+
+
+def custom_500_view(request, exception=None):
+    return render(request, "500.html", status=500)
+
+
 # ---- Collection views ----
 
 def collection_list(request):
