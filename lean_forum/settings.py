@@ -23,8 +23,28 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get("SECRET_KEY", default='django-insecure-dev-placeholder-change-me')
 
+
+def env_flag(name, default=False):
+    """解析布尔型环境变量：只有 1/true/yes/on 才算真。
+
+    不能用 bool(os.environ.get(name, default))：布尔字符串的坑在于 bool("0") 是 True，
+    会让 DEBUG=0 反而打开调试模式（线上就会把堆栈和配置暴露出去）。
+    """
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in ("1", "true", "yes", "on")
+
+
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = bool(os.environ.get("DEBUG", default=0))
+DEBUG = env_flag("DEBUG", default=False)
+
+# 上传文件（头像、帖子图片）与静态文件默认由 Django 直接提供，
+# 让小站在没有 nginx 的情况下也能正常跑；
+# 如果前面已经有 nginx/CDN 托管 /media/、/static/，把对应开关设为 0 交给前置服务器。
+SERVE_MEDIA = env_flag("SERVE_MEDIA", default=True)
+SERVE_STATIC = env_flag("SERVE_STATIC", default=True)
+
 
 # ALLOWED_HOSTS 通过环境变量配置（逗号分隔）；
 # 未设置时默认 ["*"]，如需严格限制生产域名请显式传入 ALLOWED_HOSTS
