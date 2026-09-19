@@ -86,6 +86,10 @@ window.LMDWidget = window.LMDWidget || (function () {
 
   var DEFAULT_HINT = '支持 JPG / PNG / WebP，单张不超过 10 MB；上传完成后会自动插入到光标处。';
 
+  // 与服务端 md_editor.views.upload_view 的校验保持一致，先在浏览器侧拦一道给出即时反馈
+  var IMAGE_MIME = /^image\/(png|jpeg|webp)$/;
+  var MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+
   function insertImageUrl() {
     var altEl = document.getElementById('imageAltInput');
     var urlEl = document.getElementById('imageUrlInput');
@@ -102,13 +106,35 @@ window.LMDWidget = window.LMDWidget || (function () {
     if (urlEl) urlEl.value = '';
   }
 
-  function uploadImage(file) {
+  /**
+   * 上传一张图片并插入到光标处。
+   *
+   * options.alt          插入用的替代文字（缺省时取模态框里的输入或文件名）
+   * options.fromModal    是否来自图片弹窗（决定是否关闭弹窗、复位文件框、写弹窗提示）
+   */
+  function uploadImage(file, options) {
+    options = options || {};
+    var fromModal = options.fromModal !== false;
     var endpoint = root.getAttribute('data-image-upload-to');
     if (!endpoint) return;
 
+    if (!IMAGE_MIME.test(file.type)) {
+      var mimeMsg = '只支持 JPG / PNG / WebP 图片，当前文件类型是 ' + (file.type || '未知') + '。';
+      if (fromModal) setHint('上传失败：' + mimeMsg);
+      editor.showToast(mimeMsg, 'error');
+      return;
+    }
+
+    if (file.size > MAX_UPLOAD_BYTES) {
+      var sizeMsg = '图片不能超过 10 MB，当前 ' + (file.size / 1024 / 1024).toFixed(1) + ' MB。';
+      if (fromModal) setHint('上传失败：' + sizeMsg);
+      editor.showToast(sizeMsg, 'error');
+      return;
+    }
+
     var form = new FormData();
     form.append('image', file);
-    setHint('正在上传 ' + file.name + ' …');
+    if (fromModal) setHint('正在上传 ' + (file.name || '图片') + ' …');
 
     fetch(endpoint, {
       method: 'POST',
@@ -126,15 +152,17 @@ window.LMDWidget = window.LMDWidget || (function () {
         throw new Error(result.data.error || '上传失败');
       }
       var altEl = document.getElementById('imageAltInput');
-      var alt = (altEl && altEl.value.trim()) || file.name || '图片';
+      var alt = options.alt || (fromModal && altEl && altEl.value.trim()) || file.name || '图片';
       editor.insertAtCursor('![' + alt + '](' + result.data.url + ')');
-      editor.closeModal('imageModal');
       editor.showToast('图片已上传并插入。', 'success');
-      setHint(DEFAULT_HINT);
-      var input = document.getElementById('imageFileInput');
-      if (input) input.value = '';
+      if (fromModal) {
+        editor.closeModal('imageModal');
+        setHint(DEFAULT_HINT);
+        var input = document.getElementById('imageFileInput');
+        if (input) input.value = '';
+      }
     }).catch(function (err) {
-      setHint('上传失败：' + err.message);
+      if (fromModal) setHint('上传失败：' + err.message);
       editor.showToast('图片上传失败：' + err.message, 'error');
     });
   }
@@ -145,6 +173,88 @@ window.LMDWidget = window.LMDWidget || (function () {
     input.addEventListener('change', function () {
       var file = input.files && input.files[0];
       if (file) uploadImage(file);
+    });
+  }
+
+  // ---- 粘贴 / 拖拽上传 ----
+  //
+  // 写题解时最常见的动作是截图后直接 Ctrl+V，或把图片拖进编辑区。
+  // 这两条路径都走同一个上传接口，只是不经过图片弹窗。
+
+  function pickImageFile(dataTransfer) {
+    if (!dataTransfer) return null;
+
+    // 拖拽与部分浏览器的截图粘贴会带 files
+    var files = dataTransfer.files;
+    for (var i = 0; files && i < files.length; i++) {
+      if (IMAGE_MIME.test(files[i].type)) return files[i];
+    }
+
+    // 另一些浏览器只给 items
+    var items = dataTransfer.items;
+    for (var j = 0; items && j < items.length; j++) {
+      var item = items[j];
+      if (item.kind === 'file' && IMAGE_MIME.test(item.type)) {
+        var file = item.getAsFile();
+        if (file) return file;
+      }
+    }
+    return null;
+  }
+
+  function bindPasteUpload() {
+    // 绑在容器上而不是 textarea：Typora 模式下编辑区是覆盖层，事件不经过 textarea
+    root.addEventListener('paste', function (event) {
+      var file = pickImageFile(event.clipboardData);
+      if (!file) return;   // 普通文本粘贴保持原样
+      event.preventDefault();
+      uploadImage(file, { alt: '粘贴的图片', fromModal: false });
+    });
+  }
+
+  function bindDropUpload() {
+    var depth = 0;
+
+    function hasFiles(event) {
+      var types = event.dataTransfer && event.dataTransfer.types;
+      for (var i = 0; types && i < types.length; i++) {
+        if (types[i] === 'Files') return true;
+      }
+      return false;
+    }
+
+    root.addEventListener('dragenter', function (event) {
+      if (!hasFiles(event)) return;
+      event.preventDefault();
+      depth++;
+      root.classList.add('lmd-drop-active');
+    });
+
+    root.addEventListener('dragover', function (event) {
+      if (!hasFiles(event)) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'copy';
+    });
+
+    root.addEventListener('dragleave', function () {
+      if (--depth <= 0) {
+        depth = 0;
+        root.classList.remove('lmd-drop-active');
+      }
+    });
+
+    root.addEventListener('drop', function (event) {
+      if (!hasFiles(event)) return;
+      event.preventDefault();
+      depth = 0;
+      root.classList.remove('lmd-drop-active');
+
+      var file = pickImageFile(event.dataTransfer);
+      if (!file) {
+        editor.showToast('拖入的文件里没有可用的图片（支持 JPG / PNG / WebP）。', 'error');
+        return;
+      }
+      uploadImage(file, { alt: '拖入的图片', fromModal: false });
     });
   }
 
@@ -177,6 +287,8 @@ window.LMDWidget = window.LMDWidget || (function () {
     watchTheme();
     patchFileOperations();
     bindImageUpload();
+    bindPasteUpload();
+    bindDropUpload();
     syncOnSubmit();
 
     // 上游的 autoSave 已被替换，这里补一次状态栏文案
@@ -188,6 +300,7 @@ window.LMDWidget = window.LMDWidget || (function () {
   return {
     init: init,
     insertImageUrl: insertImageUrl,
+    uploadImage: uploadImage,
     applyTheme: applyTheme
   };
 })();
