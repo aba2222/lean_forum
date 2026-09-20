@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load forum_extras %}
 
 {% block title %}{{ collection.name }}{% endblock %}
 
@@ -8,10 +9,16 @@
     <div class="markdown-body mb-3">{{ collection.content_html|safe }}</div>
   {% endif %}
 
-  <p class="text-muted">
-    <small
-      >创建者：{{ collection.owner.username }} · {{ collection.created_at|date:"Y-m-d" }}</small
+  <p class="text-muted d-flex align-items-center gap-2 flex-wrap">
+    <a
+      class="d-inline-flex align-items-center gap-2 text-decoration-none text-muted"
+      href="{% url 'profile' collection.owner.username %}"
+      title="查看 {{ collection.owner.username }} 的主页"
     >
+      {% avatar collection.owner 24 %}
+      <span>{{ collection.owner.username }}</span>
+    </a>
+    <small>· {{ collection.created_at|date:"Y-m-d" }}</small>
   </p>
 
   {% if user == collection.owner %}
@@ -35,7 +42,13 @@
           <a href="{% url 'collection_post_detail' collection.id cp.post.id %}"
             >{{ cp.post.title }}</a
           >
-          <small class="text-muted ms-2">{{ cp.post.author.username }}</small>
+          <small class="text-muted ms-2"
+            ><a
+              class="text-decoration-none text-muted"
+              href="{% url 'profile' cp.post.author.username %}"
+              >{{ cp.post.author.username }}</a
+            ></small
+          >
         </div>
         <small class="text-muted">{{ cp.post.created_at|date:"Y-m-d" }}</small>
       </li>

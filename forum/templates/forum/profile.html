@@ -1,0 +1,240 @@
+{% extends 'base.html' %}
+{% load humanize forum_extras %}
+
+{% block title %}{{ profile_user.username }} 的主页{% endblock %}
+
+{% block content %}
+  <div class="row g-4">
+    <div class="col-12 col-lg-4">
+      <aside class="card shadow-sm profile-card" aria-labelledby="profileName">
+        <div class="card-body text-center">
+          {% avatar profile_user 112 %}
+          <h1 id="profileName" class="h4 mt-3 mb-1">{{ profile_user.username }}</h1>
+          <p class="text-muted small mb-3">
+            <span aria-hidden="true">{% include 'forum/icons/calendar.svg' %}</span>
+            {{ profile_user.date_joined|date:"Y-m-d" }} 加入 · {{ profile_user.date_joined|naturaltime }}
+          </p>
+
+          {% if profile.content_html %}
+            <div class="markdown-body profile-bio text-start">{{ profile.content_html|safe }}</div>
+          {% else %}
+            <p class="text-muted small mb-0">这位用户还没有填写个人简介。</p>
+          {% endif %}
+
+          {% if profile.location or profile.website %}
+            <ul class="list-unstyled small text-muted text-start mt-4 mb-0 profile-meta">
+              {% if profile.location %}
+                <li class="d-flex align-items-start gap-2">
+                  <span aria-hidden="true">{% include 'forum/icons/person.svg' %}</span>
+                  <span>{{ profile.location }}</span>
+                </li>
+              {% endif %}
+              {% if profile.website %}
+                <li class="d-flex align-items-start gap-2 mt-2">
+                  <span aria-hidden="true">{% include 'forum/icons/chat-left.svg' %}</span>
+                  <a href="{{ profile.website }}" target="_blank" rel="noopener noreferrer nofollow">{{ profile.website }}</a>
+                </li>
+              {% endif %}
+            </ul>
+          {% endif %}
+
+          {% if is_self %}
+            <a href="{% url 'profile_edit' %}" class="btn btn-outline-primary w-100 mt-4">编辑资料</a>
+          {% endif %}
+        </div>
+      </aside>
+    </div>
+
+    <div class="col-12 col-lg-8">
+      <div class="row row-cols-2 row-cols-md-4 g-3 mb-4">
+        <div class="col">
+          <div class="card h-100 shadow-sm text-center">
+            <div class="card-body py-3">
+              <div class="h4 mb-0 fw-semibold">{{ stats.posts }}</div>
+              <div class="text-muted small">帖子</div>
+            </div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="card h-100 shadow-sm text-center">
+            <div class="card-body py-3">
+              <div class="h4 mb-0 fw-semibold">{{ stats.comments }}</div>
+              <div class="text-muted small">评论</div>
+            </div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="card h-100 shadow-sm text-center">
+            <div class="card-body py-3">
+              <div class="h4 mb-0 fw-semibold">{{ stats.collections }}</div>
+              <div class="text-muted small">合集</div>
+            </div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="card h-100 shadow-sm text-center">
+            <div class="card-body py-3">
+              <div class="h4 mb-0 fw-semibold">{{ stats.views }}</div>
+              <div class="text-muted small">帖子浏览量</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <ul class="nav nav-tabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <a
+            class="nav-link {% if tab == 'posts' %}active{% endif %}"
+            href="?tab=posts"
+            role="tab"
+            aria-selected="{% if tab == 'posts' %}true{% else %}false{% endif %}"
+            >帖子 <span class="badge text-bg-secondary">{{ stats.posts }}</span></a
+          >
+        </li>
+        <li class="nav-item" role="presentation">
+          <a
+            class="nav-link {% if tab == 'comments' %}active{% endif %}"
+            href="?tab=comments"
+            role="tab"
+            aria-selected="{% if tab == 'comments' %}true{% else %}false{% endif %}"
+            >评论 <span class="badge text-bg-secondary">{{ stats.comments }}</span></a
+          >
+        </li>
+        <li class="nav-item" role="presentation">
+          <a
+            class="nav-link {% if tab == 'collections' %}active{% endif %}"
+            href="?tab=collections"
+            role="tab"
+            aria-selected="{% if tab == 'collections' %}true{% else %}false{% endif %}"
+            >合集 <span class="badge text-bg-secondary">{{ stats.collections }}</span></a
+          >
+        </li>
+      </ul>
+
+      <div class="pt-3">
+        {% if tab == 'posts' %}
+          {% if page_obj.object_list %}
+            <div class="list-group shadow-sm">
+              {% for post in page_obj %}
+                <a
+                  class="list-group-item list-group-item-action d-flex justify-content-between align-items-center gap-3"
+                  href="{% url 'post_detail' post.id %}"
+                >
+                  <span class="text-truncate">{{ post.title }}</span>
+                  <small class="text-muted text-nowrap">
+                    <span aria-hidden="true">{% include 'forum/icons/eye.svg' %}</span>
+                    {{ post.views }} · {{ post.created_at|naturaltime }}
+                  </small>
+                </a>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="alert alert-info">
+              <span aria-hidden="true">{% include 'forum/icons/info-circle.svg' %}</span>
+              还没有发布过帖子。
+            </div>
+          {% endif %}
+        {% elif tab == 'comments' %}
+          {% if page_obj.object_list %}
+            <div class="list-group shadow-sm">
+              {% for comment in page_obj %}
+                <div class="list-group-item">
+                  <div class="d-flex justify-content-between align-items-start gap-3">
+                    <div class="profile-comment-body">
+                      <a href="{% url 'post_detail' comment.post_id %}">{{ comment.post.title }}</a>
+                      <div class="text-muted small text-truncate">{{ comment.content|truncatechars:80 }}</div>
+                    </div>
+                    <small class="text-muted text-nowrap">{{ comment.created_at|naturaltime }}</small>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="alert alert-info">
+              <span aria-hidden="true">{% include 'forum/icons/info-circle.svg' %}</span>
+              还没有发表过评论。
+            </div>
+          {% endif %}
+        {% else %}
+          {% if page_obj.object_list %}
+            <div class="list-group shadow-sm">
+              {% for collection in page_obj %}
+                <a
+                  class="list-group-item list-group-item-action d-flex justify-content-between align-items-center gap-3"
+                  href="{% url 'collection_detail' collection.id %}"
+                >
+                  <span>
+                    <span aria-hidden="true">{% include 'forum/icons/collection.svg' %}</span>
+                    {{ collection.name }}
+                    {% if collection.content %}
+                      <br /><small class="text-muted">{{ collection.content|truncatechars:80 }}</small>
+                    {% endif %}
+                  </span>
+                  <span class="badge text-bg-secondary text-nowrap"
+                    >{{ collection.collection_posts.count }} 篇</span
+                  >
+                </a>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="alert alert-info">
+              <span aria-hidden="true">{% include 'forum/icons/info-circle.svg' %}</span>
+              还没有创建过合集。
+            </div>
+          {% endif %}
+        {% endif %}
+      </div>
+
+      {% if page_obj.has_other_pages %}
+        <nav class="pagination mt-3" aria-label="个人主页分页">
+          <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+              <li class="page-item">
+                <a class="page-link" href="?tab={{ tab }}&page={{ page_obj.previous_page_number }}">上一页</a>
+              </li>
+            {% endif %}
+            <li class="page-item disabled">
+              <span class="page-link"
+                >第 {{ page_obj.number }} 页 / 共 {{ page_obj.paginator.num_pages }} 页</span
+              >
+            </li>
+            {% if page_obj.has_next %}
+              <li class="page-item">
+                <a class="page-link" href="?tab={{ tab }}&page={{ page_obj.next_page_number }}">下一页</a>
+              </li>
+            {% endif %}
+          </ul>
+        </nav>
+      {% endif %}
+    </div>
+  </div>
+
+  <style>
+    /* 简介复用 github-markdown-css，但在卡片里要去掉它的内边距和自带背景 */
+    .profile-bio.markdown-body {
+      padding: 0;
+      margin: 0;
+      min-width: 0;
+      max-width: none;
+      background-color: transparent;
+      font-size: 0.9rem;
+      text-align: left;
+    }
+
+    .profile-bio.markdown-body > *:last-child {
+      margin-bottom: 0;
+    }
+
+    .profile-meta a {
+      word-break: break-all;
+    }
+
+    .profile-comment-body {
+      min-width: 0;
+    }
+
+    [data-bs-theme='dark'] .profile-bio.markdown-body {
+      background-color: transparent;
+    }
+  </style>
+{% endblock %}

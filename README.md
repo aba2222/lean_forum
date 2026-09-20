@@ -13,6 +13,8 @@ A lightweight forum system built with Django.
 
 - Markdown editor with LaTeX math support
 - Post creation, comments, and deletion
+- Personal profile page with avatar upload (falls back to a letter avatar)
+- Post collections
 - AI bot (mention `@bot` in a post)
 - Web Push browser notifications
 - Light/Dark theme toggle
@@ -90,7 +92,12 @@ GET /api/posts/{id}/
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `SECRET_KEY` | Django secret key | Built-in dev key |
-| `DEBUG` | Debug mode | `0` |
+| `DEBUG` | Debug mode; only `1`/`true`/`yes`/`on` enables it | `0` |
+| `SERVE_MEDIA` | Serve `/media/` uploads (avatars, post images) from Django. Set to `0` when a front-end server (nginx/CDN) already handles `/media/` | `1` |
+| `SERVE_STATIC` | Serve `/static/` from Django (requires `collectstatic`). Set to `0` when a front-end server handles `/static/` | `1` |
+
+> Local development: set `DEBUG=1`. With debug on, `runserver` serves app static files
+> (including the Markdown editor) directly, so `collectstatic` is not needed.
 
 ## License
 

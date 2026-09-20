@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 
 {% block title %}Lean forum{% endblock %}
-{% load humanize %}
+{% load humanize forum_extras %}
 
 {% block content %}
   <header class="mb-5">
@@ -66,7 +66,14 @@
             <article class="card h-100 shadow-sm">
               <div class="card-body d-flex flex-column">
                 <h3 class="h5 card-title">{{ post.title }}</h3>
-                <p class="card-subtitle text-muted mb-3">作者：{{ post.author }}</p>
+                <p class="card-subtitle text-muted mb-3 d-flex align-items-center gap-2">
+                  {% avatar post.author 24 %}
+                  <a
+                    class="link-secondary text-decoration-none"
+                    href="{% url 'profile' post.author.username %}"
+                    >{{ post.author.username }}</a
+                  >
+                </p>
                 <p class="card-text text-muted mb-4">{{ post.created_at | naturaltime }}</p>
                 <a href="{% url 'post_detail' post.id %}" class="btn btn-outline-primary mt-auto">
                   查看详情

@@ -1,5 +1,5 @@
 import re, random
-from django.db.models import F
+from django.db.models import F, Sum
 from django.db import models as db_models
 from django.http import JsonResponse
 from django.urls import reverse_lazy
@@ -22,8 +22,8 @@ from rest_framework.views import APIView
 
 from forum.api import UserRegistrationSerializer
 from .utils import send_group_notification
-from forum.form import MDEditorCommentForm, MDEditorModelForm, CollectionForm
-from forum.models import Comment, Item, Post, Rating, Collection, CollectionPost
+from forum.form import MDEditorCommentForm, MDEditorModelForm, CollectionForm, ProfileForm
+from forum.models import Comment, Item, Post, Rating, Collection, CollectionPost, Profile
 from forum.bots_manager import manager
 
 # Create your views here.
@@ -439,3 +439,63 @@ class UserRegistrationView(APIView):
               "message": "User registered successfully"
             }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ---- Profile / 个人主页 ----
+
+PROFILE_TABS = ('posts', 'comments', 'collections')
+PROFILE_PAGE_SIZE = 10
+
+
+def profile_view(request, username):
+    """公开的个人主页：头像、简介、统计，以及帖子/评论/合集三个分页列表。"""
+    profile_user = get_object_or_404(User, username=username)
+    profile, _ = Profile.objects.get_or_create(user=profile_user)
+
+    posts = Post.objects.filter(author=profile_user).order_by('-created_at')
+    comments = (
+        Comment.objects.filter(author=profile_user)
+        .select_related('post')
+        .order_by('-created_at')
+    )
+    collections = Collection.objects.filter(owner=profile_user).order_by('-created_at')
+
+    tab = request.GET.get('tab', 'posts')
+    if tab not in PROFILE_TABS:
+        tab = 'posts'
+
+    active_qs = {'posts': posts, 'comments': comments, 'collections': collections}[tab]
+    paginator = Paginator(active_qs, PROFILE_PAGE_SIZE)
+    page_obj = paginator.get_page(request.GET.get('page', 1))
+
+    return render(request, 'forum/profile.html', {
+        'profile': profile,
+        'profile_user': profile_user,
+        'tab': tab,
+        'page_obj': page_obj,
+        'stats': {
+            'posts': posts.count(),
+            'comments': comments.count(),
+            'collections': collections.count(),
+            'views': posts.aggregate(total=Sum('views'))['total'] or 0,
+        },
+        'is_self': request.user.is_authenticated and request.user.pk == profile_user.pk,
+    })
+
+
+@login_required
+def profile_edit_view(request):
+    """编辑自己的资料：头像、简介、个人网站、所在地。"""
+    profile, _ = Profile.objects.get_or_create(user=request.user)
+
+    if request.method == 'POST':
+        form = ProfileForm(request.POST, request.FILES, instance=profile)
+        if form.is_valid():
+            form.save()
+            messages.success(request, '资料已更新。')
+            return redirect('profile', username=request.user.username)
+        messages.error(request, '资料保存失败，请检查下面的提示。')
+    else:
+        form = ProfileForm(instance=profile)
+
+    return render(request, 'forum/profile_edit.html', {'form': form, 'profile': profile})

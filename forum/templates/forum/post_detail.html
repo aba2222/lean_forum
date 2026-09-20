@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load forum_extras %}
 
 {% block title %}{{ post.title }}{% endblock %}
 
@@ -41,8 +42,14 @@
       <h1 class="post-title">{{ post.title }}</h1>
       <div class="post-meta d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
         <div class="text-muted">
-          <span aria-hidden="true">{% include 'forum/icons/person.svg' %}</span>
-          {{ post.author.username }}
+          <a
+            class="d-inline-flex align-items-center gap-2 text-decoration-none text-muted"
+            href="{% url 'profile' post.author.username %}"
+            title="查看 {{ post.author.username }} 的主页"
+          >
+            {% avatar post.author 28 %}
+            <span>{{ post.author.username }}</span>
+          </a>
           <span class="mx-2">|</span>
           <span aria-hidden="true">{% include 'forum/icons/calendar.svg' %}</span>
           {{ post.created_at|date:"Y-m-d H:i" }}
@@ -97,10 +104,15 @@
         {% for comment in comments %}
           <article class="comment-item mb-3 border rounded" aria-labelledby="commentLabel{{ forloop.counter }}">
             <div class="comment-header border-bottom d-flex justify-content-between align-items-start gap-2">
-              <div>
+              <div class="d-flex align-items-center gap-2">
+                {% avatar comment.author 24 %}
                 <strong id="commentLabel{{ forloop.counter }}">
                   <small class="text-muted">#{{ page_obj.start_index|add:forloop.counter0 }}</small>
-                  {{ comment.author.username }}
+                  <a
+                    class="text-decoration-none"
+                    href="{% url 'profile' comment.author.username %}"
+                    >{{ comment.author.username }}</a
+                  >
                 </strong>
                 <div class="text-muted small">{{ comment.created_at|date:"Y-m-d H:i" }}</div>
               </div>

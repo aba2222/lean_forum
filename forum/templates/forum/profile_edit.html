@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% load forum_extras %}
+
+{% block title %}编辑资料{% endblock %}
+
+{% block content %}
+  <div class="row justify-content-center">
+    <div class="col-12 col-lg-8">
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <h1 class="h3 mb-0">编辑资料</h1>
+        <a href="{% url 'profile' user.username %}" class="btn btn-outline-secondary btn-sm"
+          >返回我的主页</a
+        >
+      </div>
+
+      <form method="post" enctype="multipart/form-data" class="card shadow-sm" novalidate>
+        {% csrf_token %}
+
+        <div class="card-body">
+          {% if form.non_field_errors %}
+            <div class="alert alert-danger" role="alert">
+              {% for error in form.non_field_errors %}
+                <div>{{ error }}</div>
+              {% endfor %}
+            </div>
+          {% endif %}
+
+          <div class="d-flex align-items-center gap-3 mb-4 profile-avatar-preview">
+            <span class="flex-shrink-0" id="avatar-preview">{% avatar user 72 %}</span>
+            <p class="text-muted small mb-0">
+              选择新头像后会立即预览，点击「保存修改」才会生效；勾选头像下方的「清除」可以回到默认字母头像。
+            </p>
+          </div>
+
+          {% for field in form %}
+            <div class="mb-4">
+              <label class="form-label fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}</label>
+              {{ field }}
+              {% if field.help_text %}
+                <div class="form-text">{{ field.help_text }}</div>
+              {% endif %}
+              {% for error in field.errors %}
+                <div class="invalid-feedback d-block">{{ error }}</div>
+              {% endfor %}
+            </div>
+          {% endfor %}
+        </div>
+
+        <div class="card-footer d-flex flex-wrap gap-2 bg-body-tertiary">
+          <button type="submit" class="btn btn-primary">
+            <span aria-hidden="true">{% include 'forum/icons/pencil-square.svg' %}</span>
+            保存修改
+          </button>
+          <a href="{% url 'profile' user.username %}" class="btn btn-link">取消</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <style>
+    .profile-avatar-preview .avatar-img,
+    .profile-avatar-preview .avatar-initial {
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+    }
+  </style>
+
+  <script>
+    // 选中文件后在左侧即时预览，未选择时保持当前头像/字母头像
+    (function () {
+      const slot = document.getElementById('avatar-preview');
+      const input = document.querySelector('form input[type="file"][name="avatar"]');
+      if (!slot || !input) return;
+      input.addEventListener('change', function () {
+        const file = input.files && input.files[0];
+        if (!file) return;
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.className = 'avatar-img rounded-circle';
+        img.width = 72;
+        img.height = 72;
+        img.alt = '新头像预览';
+        img.onload = function () {
+          slot.replaceChildren(img);
+          URL.revokeObjectURL(url);
+        };
+        img.src = url;
+      });
+    })();
+  </script>
+{% endblock %}
