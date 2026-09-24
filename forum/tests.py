@@ -140,6 +140,13 @@ class ForumTests(TestCase):
         self.assertEqual(comment_resp.status_code, 201)
         self.assertTrue(Comment.objects.filter(post=post, author=self.user, content='nice api comment').exists())
 
+    def test_nav_search_form_uses_search_query(self):
+        response = self.client.get(reverse('index'))
+
+        self.assertContains(response, 'name="q"')
+        self.assertContains(response, f'action="{reverse("post_list")}"')
+        self.assertContains(response, 'method="get"')
+
     def test_api_others_cannot_delete_post(self):
         post = Post.objects.create(author=self.user, title='to_delete', content='c')
         url = reverse('post-detail', kwargs={'pk': post.id})

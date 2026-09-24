@@ -5,6 +5,9 @@
 
 {% block content %}
   <h1>所有文章</h1>
+  {% if request.GET.q %}
+    <p class="text-muted mb-3">搜索关键词：{{ request.GET.q }}</p>
+  {% endif %}
   <a href="{% url 'post_create' %}">发新帖</a>
   <ul>
     {% for item in page_obj %}
@@ -28,8 +31,8 @@
   <div class="pagination">
     <span class="step-links">
       {% if page_obj.has_previous %}
-        <a href="?page=1">&laquo; 第一页</a>
-        <a href="?page={{ page_obj.previous_page_number }}">上一页</a>
+        <a href="?q={{ request.GET.q|urlencode }}&page=1">&laquo; 第一页</a>
+        <a href="?q={{ request.GET.q|urlencode }}&page={{ page_obj.previous_page_number }}">上一页</a>
       {% endif %}
 
       <span class="current">
@@ -37,8 +40,8 @@
       </span>
 
       {% if page_obj.has_next %}
-        <a href="?page={{ page_obj.next_page_number }}">下一页</a>
-        <a href="?page={{ page_obj.paginator.num_pages }}">最后一页 &raquo;</a>
+        <a href="?q={{ request.GET.q|urlencode }}&page={{ page_obj.next_page_number }}">下一页</a>
+        <a href="?q={{ request.GET.q|urlencode }}&page={{ page_obj.paginator.num_pages }}">最后一页 &raquo;</a>
       {% endif %}
     </span>
   </div>

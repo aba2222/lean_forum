@@ -1,10 +1,10 @@
 import re, random
 from django.db.models import F, Sum
+from django.db.models import Q
 from django.db import models as db_models
 from django.http import JsonResponse
 from django.urls import reverse_lazy
 from django.utils import timezone
-from django.core.exceptions import PermissionDenied
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404, redirect, render
 from django.core.paginator import Paginator
@@ -43,6 +43,14 @@ class PostListView(ListView):
         context = super().get_context_data(**kwargs)
         context["now"] = timezone.now()
         return context
+
+    def get_queryset(self):
+       query = self.request.GET.get("q", "").strip()
+       if not query:
+           return Post.objects.all()
+       return Post.objects.filter(
+           Q(title__icontains=query) | Q(content__icontains=query)
+       )
 
 @login_required
 def rate_item(request, item_id):
