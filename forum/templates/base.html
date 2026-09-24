@@ -88,7 +88,7 @@
         flex: 0 0 auto;
         object-fit: cover;
         overflow: hidden;
-        color: #fff;
+        color: inherit;
         font-weight: 600;
         line-height: 1;
         vertical-align: middle;
@@ -163,14 +163,6 @@
               <li class="nav-item">
                 <a class="nav-link active" href="{% url 'index' %}">首页</a>
               </li>
-              {% if not user.is_authenticated %}
-                <li class="nav-item">
-                  <a class="nav-link" href="{% url 'login' %}">登录</a>
-                </li>
-                <li class="nav-item">
-                  <a class="nav-link" href="{% url 'register' %}">注册</a>
-                </li>
-              {% endif %}
               <li class="nav-item">
                 <a class="nav-link" href="{% url 'post_list' %}">所有文章</a>
               </li>
@@ -224,7 +216,16 @@
                   </li>
                 </ul>
               </div>
-            {% endif %}
+            {% else %}
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item">
+                  <a class="nav-link" href="{% url 'login' %}">登录</a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="{% url 'register' %}">注册</a>
+                </li>
+              </ul>
+              {% endif %}
           </div>
         </div>
       </nav>
