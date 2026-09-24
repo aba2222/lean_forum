@@ -108,7 +108,13 @@ def delete_avatar_file(field_file):
 
 def avatar_url(user):
     """取用户头像 URL，没有头像时返回空串（前端回退到字母头像）。"""
+    if user is None:
+        return ''
+
     profile = getattr(user, 'profile', None)
+    if profile is None:
+        return ''
+
     avatar = getattr(profile, 'avatar', None)
     if avatar and getattr(avatar, 'name', ''):
         try:

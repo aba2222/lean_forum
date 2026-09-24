@@ -12,7 +12,7 @@ import tempfile
 
 from PIL import Image
 
-from .avatars import AVATAR_MAX_BYTES, AVATAR_MAX_EDGE, fallback_color, fallback_initial
+from .avatars import AVATAR_MAX_BYTES, AVATAR_MAX_EDGE, avatar_url, fallback_color, fallback_initial
 from .models import Post, Comment, Item, Rating, Profile
 
 # Create your tests here.
@@ -391,6 +391,22 @@ class ProfileTests(TestCase):
         resp = self.client.post(reverse('profile_edit'), {'content': '字' * 2001})
         self.assertEqual(resp.status_code, 200)
         self.assertIn('content', resp.context['form'].errors)
+
+    def test_profile_edit_allows_bio_up_to_200_chars(self):
+        long_bio = '字' * 200
+        resp = self.client.post(
+            reverse('profile_edit'),
+            {'content': long_bio, 'website': '', 'location': ''},
+        )
+
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(Profile.objects.get(user=self.user).content, long_bio)
+
+    def test_avatar_url_handles_user_without_profile(self):
+        user_without_profile = User.objects.create_user('no_profile_user', password='pw12345')
+        Profile.objects.filter(user=user_without_profile).delete()
+
+        self.assertEqual(avatar_url(user_without_profile), '')
 
     def test_profile_edit_renders_markdown_editor(self):
         resp = self.client.get(reverse('profile_edit'))

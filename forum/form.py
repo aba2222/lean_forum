@@ -5,7 +5,7 @@ from django import forms
 from django.core.files.uploadedfile import UploadedFile
 import re
 
-BIO_MAX_LENGTH = 2000
+BIO_MAX_LENGTH = 200
 
 class MDEditorModelForm(forms.ModelForm):
     def __init__(self, *args, user=None, **kwargs):
