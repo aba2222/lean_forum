@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.test import TestCase, override_settings
+from django.test import TestCase, TransactionTestCase, override_settings
 from django.urls import reverse
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -12,6 +12,7 @@ import tempfile
 
 from PIL import Image
 
+from . import search
 from .avatars import AVATAR_MAX_BYTES, AVATAR_MAX_EDGE, avatar_url, fallback_color, fallback_initial
 from .models import Post, Comment, Item, Rating, Profile
 
@@ -567,3 +568,86 @@ class ProfileTests(TestCase):
             detail, reverse('profile', kwargs={'username': 'friend'})
         )
         self.assertContains(detail, 'avatar-initial')
+
+
+class SearchTests(TransactionTestCase):
+    """站内搜索：FTS5 命中、短查询回退、索引与源表同步。
+
+    用 TransactionTestCase 而不是 TestCase：FTS5 虚表的创建与 rebuild 必须在
+    事务之外执行（见 forum/search.py 的说明），TestCase 会把每个用例包在事务里
+    并在结束时回滚，正好踩中 SQLite 的那个坑。
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user('searcher', password='pw12345')
+        self.other = User.objects.create_user('another', password='pw12345')
+
+    def make_post(self, title, content, author=None):
+        return Post.objects.create(author=author or self.user, title=title, content=content)
+
+    # ---- 命中 ----
+
+    def test_long_chinese_query_hits(self):
+        self.make_post('最短路算法总结', 'dijkstra 与 SPFA 的对比')
+        self.make_post('无关的一篇', '别的内容')
+        self.assertEqual(
+            [p.title for p in search.search_posts('最短路')], ['最短路算法总结']
+        )
+
+    def test_short_chinese_query_falls_back_and_still_hits(self):
+        # 两字词用不上 trigram 索引，回退 LIKE 也必须搜得到
+        self.make_post('图论入门', '这是一篇题解')
+        self.assertEqual([p.title for p in search.search_posts('题解')], ['图论入门'])
+
+    def test_searches_content_not_only_title(self):
+        self.make_post('标题不相关', '正文里提到 单调队列优化')
+        self.assertEqual([p.title for p in search.search_posts('单调队列')], ['标题不相关'])
+
+    def test_search_by_author_name(self):
+        self.make_post('随便一篇', '随便', author=self.other)
+        self.assertEqual(search.search_posts('another').count(), 1)
+
+    def test_empty_query_returns_everything(self):
+        self.make_post('甲', 'x')
+        self.make_post('乙', 'y')
+        self.assertEqual(search.search_posts('').count(), 2)
+
+    # ---- 索引是否真的用上了 ----
+
+    def test_long_query_really_uses_fts_index(self):
+        self.make_post('最短路算法总结', 'x')
+        ids = search._fts_ids('最短路')
+        self.assertIsNotNone(ids, 'FTS5 索引不可用，说明退化成了 LIKE')
+        self.assertEqual(len(ids), 1)
+
+    # ---- 索引与源表同步 ----
+
+    def test_index_follows_update_and_delete(self):
+        post = self.make_post('旧标题aaa', '旧内容aaa')
+        self.assertEqual(search.search_posts('旧标题').count(), 1)
+
+        post.title = '新标题bbb'
+        post.content = '新内容bbb'
+        post.save()
+        self.assertEqual(search.search_posts('新标题').count(), 1)
+        self.assertEqual(search.search_posts('旧标题').count(), 0)
+
+        post.delete()
+        self.assertEqual(search.search_posts('新标题').count(), 0)
+
+    # ---- 健壮性 ----
+
+    def test_fts_operator_characters_are_treated_as_text(self):
+        self.make_post('一篇普通文章', '内容')
+        # 这些都是 FTS5 的查询操作符，不能被当成语法
+        for q in ['"', '*', '(', ')', 'NEAR(', 'a OR b', '标题"', '"未闭合']:
+            list(search.search_posts(q))
+
+    # ---- 页面 ----
+
+    def test_post_list_page_uses_search(self):
+        self.make_post('最短路算法总结', 'x')
+        self.make_post('无关的一篇', 'y')
+        resp = self.client.get(reverse('post_list'), {'q': '最短路'})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.context['page_obj'].object_list), 1)
