@@ -33,7 +33,7 @@ class Profile(MarkdownModel):
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     avatar = models.ImageField('头像', upload_to=avatar_upload_to, blank=True, null=True)
-    content = MDTextField(max_length=2000, blank=True, verbose_name='个人简介')
+    content = MDTextField(max_length=200, blank=True, verbose_name='个人简介')
     website = models.URLField('个人网站', max_length=200, blank=True)
     location = models.CharField('所在地', max_length=60, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
