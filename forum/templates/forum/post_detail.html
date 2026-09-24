@@ -179,10 +179,10 @@
   {% if user.is_authenticated %}
     <section class="comment-form-section" aria-labelledby="commentFormHeading">
       <h3 id="commentFormHeading" class="mb-3">发表评论</h3>
-      <form method="post" class="comment-form">
+      <form method="post" class="comment-form" id="comment-form">
         {% csrf_token %}
         {{ forms.as_p }}
-        <button type="submit" class="btn btn-primary">发表评论</button>
+        <button id="comment-button" type="submit" class="btn btn-primary">发表评论</button>
       </form>
     </section>
   {% else %}
@@ -231,6 +231,15 @@
       </div>
     </div>
   {% endif %}
+
+  <script>
+    document.getElementById("comment-form").addEventListener("submit", function () {
+        const button = document.getElementById("comment-button");
+
+        button.disabled = true;
+        button.textContent = "正在发送...";
+    });
+  </script>
 
   <style>
     .post-container {

@@ -5,9 +5,18 @@
 {% block content %}
   <div class="post-create-container" style="max-width: 1200px; width: 100%; margin: 0 auto;">
     <h1 class="mb-4">发新帖</h1>
-    <form method="post" class="form-container">
+    <form method="post" class="form-container" id="post-form">
       {% csrf_token %} {{ form.as_p }}
-      <button type="submit" class="btn btn-primary btn-lg">发布文章</button>
+      <button id="submit-button" type="submit" class="btn btn-primary btn-lg">发布文章</button>
     </form>
   </div>
+
+  <script>
+    document.getElementById("post-form").addEventListener("submit", function () {
+        const button = document.getElementById("submit-button");
+
+        button.disabled = true;
+        button.textContent = "正在发布...";
+    });
+  </script>
 {% endblock %}
