@@ -39,14 +39,85 @@ window.LMDWidget = window.LMDWidget || (function () {
     });
   }
 
+  // ---- 本地草稿 ----
+  //
+  // 上游的草稿键是全局的，A 帖的草稿会串进 B 帖的表单，所以这里按
+  // 「页面路径 + 字段名」命名空间化：/posts/create/ 与 /posts/5/ 的评论框互不干扰。
+  // 提交时清掉；校验失败时服务端会把内容重新渲染回字段里，所以不会丢。
+  // 草稿只存在本机浏览器，不涉及服务端。
+
+  var DRAFT_PREFIX = 'lmd_draft:';
+  var draftKey = '';
+  var initialContent = '';
+  var draftTimer = null;
+
+  function draftStorageKey() {
+    var field = root.querySelector('#editorTextarea');
+    var name = (field && field.name) || 'content';
+    return DRAFT_PREFIX + location.pathname + ':' + name;
+  }
+
+  function readDraft() {
+    try {
+      return window.localStorage.getItem(draftKey) || '';
+    } catch (err) {
+      return '';
+    }
+  }
+
+  function writeDraft(text) {
+    try {
+      // 内容跟初值一样（根本没改过）就不留草稿
+      if (!text || text === initialContent) window.localStorage.removeItem(draftKey);
+      else window.localStorage.setItem(draftKey, text);
+    } catch (err) {
+      /* 隐私模式下写不进去，忽略 */
+    }
+  }
+
+  function scheduleDraftSave() {
+    if (!draftKey) return;
+    if (draftTimer) window.clearTimeout(draftTimer);
+    draftTimer = window.setTimeout(function () {
+      draftTimer = null;
+      if (editor) writeDraft(editor.getContent());
+      updateSaveStatus();
+    }, 400);
+  }
+
+  function clearDraft() {
+    if (draftTimer) {
+      window.clearTimeout(draftTimer);
+      draftTimer = null;
+    }
+    if (draftKey) writeDraft('');
+  }
+
+  function updateSaveStatus() {
+    var el = document.getElementById('saveStatusIndicator');
+    if (!el) return;
+    el.classList.remove('save-failed');
+
+    var hasDraft = false;
+    try {
+      hasDraft = !!window.localStorage.getItem(draftKey);
+    } catch (err) {
+      /* 忽略 */
+    }
+    // 说清楚「存在哪」：只在本机浏览器里，跟提交到论坛是两回事
+    el.innerText = hasDraft
+      ? '草稿暂存在本机浏览器，尚未提交到论坛'
+      : '尚未提交，离开页面会丢失';
+  }
+
   // ---- 本地文件操作：论坛里不适用，换成明确提示 ----
 
   function patchFileOperations() {
     editor.autoSave = function () {
-      var el = document.getElementById('saveStatusIndicator');
-      if (!el) return;
-      el.classList.remove('save-failed');
-      el.innerText = '尚未提交，离开页面会丢失';
+      // 上游把「自动保存」当成本地文件应用的行为；论坛里改成
+      // 「本机草稿 + 说明没提交」，两者都跟状态栏文案绑定
+      updateSaveStatus();
+      scheduleDraftSave();
     };
 
     function notSupported(message) {
@@ -266,6 +337,9 @@ window.LMDWidget = window.LMDWidget || (function () {
     form.addEventListener('submit', function () {
       var textarea = root.querySelector('#editorTextarea');
       if (textarea && editor) textarea.value = editor.getContent();
+      // 提交即清草稿。校验失败时服务端会把内容重新渲染回字段里，不会丢；
+      // 不清的话下次打开这个页面会「恢复」已经提交过的旧内容。
+      clearDraft();
     });
   }
 
@@ -280,8 +354,19 @@ window.LMDWidget = window.LMDWidget || (function () {
       return;
     }
 
+    // 草稿键要先算出来：setContent 会触发 autoSave，那里要用到它
+    initialContent = initialValue || '';
+    draftKey = draftStorageKey();
+
     // 覆盖上游塞进来的演示模板/草稿，写回真实初值（不污染撤销历史）
-    editor.setContent(initialValue || '', false);
+    editor.setContent(initialContent, false);
+
+    // 有本机草稿就恢复。按「页面 + 字段名」隔离，不会串到别的表单
+    var draft = readDraft();
+    if (draft && draft !== initialContent) {
+      editor.setContent(draft, false);
+      editor.showToast('已恢复上次未提交的草稿。', 'info');
+    }
 
     applyTheme();
     watchTheme();
