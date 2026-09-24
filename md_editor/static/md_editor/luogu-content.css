@@ -58,6 +58,20 @@
   border: 0;
 }
 
+/* @提及：在正文里要能一眼认出来，但不抢正文的注意力 */
+.lmd-root.lmd-content .luogu-mention {
+  padding: 0 3px;
+  border-radius: 4px;
+  text-decoration: none;
+  color: var(--luogu-blue, #3498db);
+  background: var(--luogu-blue-light, #ebf5fb);
+  font-weight: 500;
+}
+
+.lmd-root.lmd-content .luogu-mention:hover {
+  text-decoration: underline;
+}
+
 /* ---------------------------------------------------------------------------
    服务端兜底样式
    兜底内容是 markdown-it 的产物，用的是裸标签；而洛谷这套样式表主要靠

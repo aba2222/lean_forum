@@ -104,6 +104,77 @@ window.LuoguRender = window.LuoguRender || (function () {
     }
   }
 
+  // ---- @提及 ----
+  //
+  // 服务端已经把「内容里真实存在的被 @ 用户名」算好放在 data-luogu-mentions 里，
+  // 所以这里不需要查任何用户信息，只按这份白名单把文本节点包成链接。
+  // 不存在的用户名不会出现在名单里，因此不会链到 404。
+
+  function escapeRegExp(text) {
+    return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  function mentionPattern(container) {
+    var raw = container.getAttribute('data-luogu-mentions') || '';
+    var names = raw.split(',').filter(Boolean);
+    if (!names.length) return null;
+
+    var alternatives = names.map(escapeRegExp).join('|');
+    try {
+      // 前面不能紧跟单词字符：避免 a@b 这种被当成提及
+      return new RegExp('(?<![\\w\\u4e00-\\u9fff])@(' + alternatives + ')(?![\\w\\u4e00-\\u9fff])', 'g');
+    } catch (err) {
+      // 老浏览器不支持后行断言（lookbehind）时跳过，不影响正文渲染
+      return null;
+    }
+  }
+
+  function linkifyMentions(container) {
+    var pattern = mentionPattern(container);
+    if (!pattern) return;
+
+    var urlTemplate = container.getAttribute('data-mention-url') || '';
+    if (!urlTemplate) return;
+
+    var scope = target(container);
+    var walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT, null);
+    var nodes = [];
+    var node;
+    while ((node = walker.nextNode())) {
+      var parent = node.parentNode;
+      if (!parent) continue;
+      // 要看祖先而不是直接父节点：代码块的文本在
+      // <pre><div class="code-line"><span class="code-line-text"> 里，
+      // 直接父节点是 span，只判父节点会把代码里的 @ 也加上链接。
+      if (parent.closest && parent.closest('a, code, pre')) continue;
+      if (node.nodeValue.indexOf('@') === -1) continue;
+      nodes.push(node);
+    }
+
+    for (var i = 0; i < nodes.length; i++) {
+      var textNode = nodes[i];
+      var text = textNode.nodeValue;
+      pattern.lastIndex = 0;
+      if (!pattern.test(text)) continue;
+
+      pattern.lastIndex = 0;
+      var fragment = document.createDocumentFragment();
+      var last = 0;
+      var match;
+      while ((match = pattern.exec(text)) !== null) {
+        fragment.appendChild(document.createTextNode(text.slice(last, match.index)));
+        var link = document.createElement('a');
+        link.className = 'luogu-mention';
+        link.href = urlTemplate.replace('__name__', encodeURIComponent(match[1]));
+        link.textContent = match[0];
+        fragment.appendChild(link);
+        last = match.index + match[0].length;
+      }
+      fragment.appendChild(document.createTextNode(text.slice(last)));
+      textNode.parentNode.replaceChild(fragment, textNode);
+    }
+  }
+
   function renderAll() {
     var parser = new window.LuoguParser();
     var list = containers();
@@ -121,6 +192,7 @@ window.LuoguRender = window.LuoguRender || (function () {
       try {
         target(container).innerHTML = parser.render(source);
         dropFallback(container);
+        linkifyMentions(container);
         container.classList.add('lmd-rendered');
       } catch (err) {
         // 单个容器失败不影响其它容器，也不清掉服务端兜底内容
