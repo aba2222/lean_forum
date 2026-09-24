@@ -82,7 +82,10 @@ if ($Migrate) {
     & $python manage.py migrate
     if ($LASTEXITCODE -ne 0) { Write-Err 'migrate 失败'; exit 1 }
 } else {
-    $pending = & $python manage.py migrate --plan 2>&1 | Select-String -Pattern '^\s+\w'
+    # showmigrations --plan 里未执行的是 "[ ]"，已执行的是 "[X]"。
+    # 不能用 migrate --plan：没有待执行迁移时它会输出
+    # "No planned migration operations."，容易被关键词误判成有待执行。
+    $pending = & $python manage.py showmigrations --plan 2>&1 | Select-String -Pattern '^\[ \]'
     if ($pending) {
         Write-Warn '有未执行的迁移，建议先跑：.\dev.ps1 -Migrate'
     }
