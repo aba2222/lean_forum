@@ -3,6 +3,7 @@ from pathlib import Path
 
 from django.db import models
 from django.contrib.auth.models import User
+from django.urls import reverse
 
 from md_editor.markdown import MarkdownModel
 from md_editor.models import MDTextField
@@ -105,3 +106,70 @@ class CollectionPost(models.Model):
 
     def __str__(self):
         return f"{self.collection.name} - {self.post.title}"
+
+
+class Notification(models.Model):
+    """站内通知：有人评论了我的帖子，或有人在内容里 @ 了我。
+
+    唯一约束是「接收者 + 触发者 + 类型 + 具体对象」——同一件事重复触发
+    （反复保存编辑、评论被提交多次）不会刷出一串重复通知。
+    """
+
+    KIND_COMMENT = 'comment'
+    KIND_MENTION = 'mention'
+    KIND_CHOICES = [
+        (KIND_COMMENT, '评论了我的帖子'),
+        (KIND_MENTION, '在内容里提到了我'),
+    ]
+
+    recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    actor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_notifications')
+    kind = models.CharField('类型', max_length=20, choices=KIND_CHOICES)
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, null=True, blank=True)
+    comment = models.ForeignKey(Comment, on_delete=models.CASCADE, null=True, blank=True)
+    is_read = models.BooleanField('已读', default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['recipient', 'actor', 'kind', 'post', 'comment'],
+                name='forum_notification_unique',
+            ),
+        ]
+        indexes = [
+            # 导航栏未读数、通知列表都按「谁 + 读没读 + 时间」取
+            models.Index(fields=['recipient', 'is_read', '-created_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.actor} -> {self.recipient}: {self.get_kind_display()}"
+
+    def get_absolute_url(self):
+        """点通知要跳到哪里：能定位到具体评论就带上锚点。"""
+        if self.comment_id and self.post_id:
+            return f"{reverse('post_detail', args=[self.post_id])}#comment-{self.comment_id}"
+        if self.post_id:
+            return reverse('post_detail', args=[self.post_id])
+        return reverse('index')
+
+    @property
+    def summary(self):
+        """通知文案里的动作部分。"""
+        if self.kind == self.KIND_MENTION:
+            return '在内容里 @ 了你'
+        return '评论了你的帖子'
+
+    @property
+    def preview(self):
+        """内容摘要：通知列表里用来判断「值不值得点」。"""
+        if self.comment_id and self.comment is not None:
+            text = (self.comment.content or '').strip()
+        elif self.post_id and self.post is not None:
+            text = (self.post.content or '').strip()
+        else:
+            return ''
+        text = ' '.join(text.split())
+        return text[:80] + ('…' if len(text) > 80 else '')
+

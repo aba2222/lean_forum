@@ -1,4 +1,5 @@
 from .models import Post, Comment
+from .notifications import notify_mentions, notify_new_comment
 from rest_framework import routers, serializers, viewsets, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import AuthenticationFailed
@@ -83,8 +84,11 @@ class PostViewSet(viewsets.ModelViewSet):
         post = self.get_object()
         serializer = CommentCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save(author=request.user, post=post)
-        return Response(CommentSerializer(serializer.instance).data, status=status.HTTP_201_CREATED)
+        comment = serializer.save(author=request.user, post=post)
+        # API 发评论与网页发评论走同一套通知逻辑
+        notify_new_comment(comment)
+        notify_mentions(comment.content, request.user, post=post, comment=comment)
+        return Response(CommentSerializer(comment).data, status=status.HTTP_201_CREATED)
 
 
 router = routers.DefaultRouter()

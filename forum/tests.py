@@ -13,7 +13,8 @@ import tempfile
 from PIL import Image
 
 from .avatars import AVATAR_MAX_BYTES, AVATAR_MAX_EDGE, avatar_url, fallback_color, fallback_initial
-from .models import Post, Comment, Item, Rating, Profile
+from .models import Post, Comment, Item, Rating, Profile, Notification
+from .notifications import extract_mentions
 
 # Create your tests here.
 
@@ -567,3 +568,196 @@ class ProfileTests(TestCase):
             detail, reverse('profile', kwargs={'username': 'friend'})
         )
         self.assertContains(detail, 'avatar-initial')
+
+
+class MentionParsingTests(TestCase):
+    """@提及的解析：中文用户名、邮箱误伤、去重。"""
+
+    def test_extracts_ascii_username(self):
+        self.assertEqual(extract_mentions('你好 @xiokuai 看这个'), ['xiokuai'])
+
+    def test_extracts_chinese_username(self):
+        # 原来的 r'@(\w+)' 匹配不到中文，这里必须能识别
+        self.assertEqual(extract_mentions('@测试用户 一起看看'), ['测试用户'])
+
+    def test_deduplicates_and_keeps_order(self):
+        self.assertEqual(extract_mentions('@beta @alpha @beta'), ['beta', 'alpha'])
+
+    def test_ignores_email_like_text(self):
+        self.assertEqual(extract_mentions('联系 liwu@outlook.com'), [])
+
+    def test_ignores_too_short_name(self):
+        # 用户名规则是 2~20 个字符，单个字符不可能是用户名
+        self.assertEqual(extract_mentions('@a 你好'), [])
+
+
+class NotificationTests(TestCase):
+    """站内通知：何时产生、不重复、只给本人看。"""
+
+    def setUp(self):
+        self.author = User.objects.create_user('author', password='pw12345')
+        self.reader = User.objects.create_user('reader', password='pw12345')
+        self.third = User.objects.create_user('third', password='pw12345')
+        self.post = Post.objects.create(author=self.author, title='楼主帖', content='正文')
+
+    def comment(self, content='说点什么'):
+        self.client.login(username='reader', password='pw12345')
+        return self.client.post(
+            reverse('post_detail', kwargs={'post_id': self.post.id}),
+            {'content': content},
+        )
+
+    # ---- 评论通知 ----
+
+    def test_comment_notifies_post_author(self):
+        self.comment('写得不错')
+        note = Notification.objects.get(recipient=self.author, kind=Notification.KIND_COMMENT)
+        self.assertEqual(note.actor, self.reader)
+        self.assertEqual(note.comment.content, '写得不错')
+        self.assertFalse(note.is_read)
+
+    def test_own_comment_does_not_notify(self):
+        self.client.login(username='author', password='pw12345')
+        self.client.post(
+            reverse('post_detail', kwargs={'post_id': self.post.id}), {'content': '自评'}
+        )
+        self.assertFalse(Notification.objects.filter(recipient=self.author).exists())
+
+    def test_same_target_twice_does_not_duplicate(self):
+        """同一条内容被反复处理（例如重新保存）只留一条通知。"""
+        from .notifications import notify
+
+        comment = Comment.objects.create(post=self.post, author=self.reader, content='一次')
+        first = notify(self.author, self.reader, Notification.KIND_COMMENT,
+                       post=self.post, comment=comment)
+        second = notify(self.author, self.reader, Notification.KIND_COMMENT,
+                        post=self.post, comment=comment)
+
+        self.assertIsNotNone(first)
+        self.assertEqual(first.pk, second.pk)
+        self.assertEqual(Notification.objects.filter(recipient=self.author).count(), 1)
+
+    def test_two_comments_produce_two_notifications(self):
+        self.comment('第一次')
+        self.comment('第二次')
+        self.assertEqual(Notification.objects.filter(recipient=self.author).count(), 2)
+
+    # ---- @提及 ----
+
+    def test_mention_notifies_user(self):
+        self.comment('@third 你也来看看')
+        note = Notification.objects.get(recipient=self.third, kind=Notification.KIND_MENTION)
+        self.assertEqual(note.actor, self.reader)
+        self.assertEqual(note.post, self.post)
+
+    def test_mention_of_unknown_user_is_ignored(self):
+        self.comment('@nobody 在吗')
+        self.assertEqual(Notification.objects.filter(kind=Notification.KIND_MENTION).count(), 0)
+
+    def test_mention_of_post_author_does_not_duplicate_comment_notification(self):
+        # 楼主既被评论通知、又被 @，应该收到两条不同类型而不是重复
+        self.comment('@author 看看这个')
+        self.assertEqual(
+            Notification.objects.filter(recipient=self.author).count(), 2
+        )
+        self.assertEqual(
+            set(Notification.objects.filter(recipient=self.author).values_list('kind', flat=True)),
+            {Notification.KIND_COMMENT, Notification.KIND_MENTION},
+        )
+
+    def test_mention_in_new_post_notifies(self):
+        self.client.login(username='author', password='pw12345')
+        self.client.post(
+            reverse('post_create'),
+            {'title': '新帖', 'content': '感谢 @third 的帮助'},
+        )
+        self.assertTrue(
+            Notification.objects.filter(recipient=self.third, kind=Notification.KIND_MENTION).exists()
+        )
+
+    # ---- 通知列表 ----
+
+    def test_notification_list_requires_login(self):
+        resp = self.client.get(reverse('notification_list'))
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn(reverse('login'), resp.url)
+
+    def test_notification_list_shows_only_own(self):
+        self.comment('@third 你好')
+        self.client.login(username='author', password='pw12345')
+        resp = self.client.get(reverse('notification_list'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.context['notifications']), 1)
+
+        self.client.login(username='third', password='pw12345')
+        resp = self.client.get(reverse('notification_list'))
+        self.assertEqual(len(resp.context['notifications']), 1)
+        self.assertEqual(resp.context['notifications'][0].recipient, self.third)
+
+    def test_navbar_badge_counts_unread(self):
+        self.comment('@third 你好')
+        self.client.login(username='third', password='pw12345')
+        resp = self.client.get('/')
+        self.assertEqual(resp.context['unread_notification_count'], 1)
+
+    def test_mark_read_redirects_to_comment_anchor(self):
+        self.comment('@third 你好')
+        note = Notification.objects.get(recipient=self.third)
+        self.client.login(username='third', password='pw12345')
+
+        resp = self.client.post(reverse('notification_read', kwargs={'notification_id': note.id}))
+
+        note.refresh_from_db()
+        self.assertTrue(note.is_read)
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn('#comment-%d' % note.comment_id, resp.url)
+
+    def test_cannot_mark_someone_elses_notification(self):
+        self.comment('@third 你好')
+        note = Notification.objects.get(recipient=self.third)
+        self.client.login(username='author', password='pw12345')
+
+        resp = self.client.post(reverse('notification_read', kwargs={'notification_id': note.id}))
+
+        self.assertEqual(resp.status_code, 404)
+        note.refresh_from_db()
+        self.assertFalse(note.is_read)
+
+    def test_read_all_marks_everything(self):
+        self.comment('@third 你好')
+        self.comment('再 @third 一次，内容和对象都不同')
+        self.assertEqual(Notification.objects.filter(recipient=self.third, is_read=False).count(), 2)
+
+        self.client.login(username='third', password='pw12345')
+        resp = self.client.post(reverse('notification_read_all'))
+
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(Notification.objects.filter(recipient=self.third, is_read=False).count(), 0)
+
+    # ---- 渲染 ----
+
+    def test_mention_renders_profile_link_data(self):
+        self.comment('@third 你好')
+        resp = self.client.get(reverse('post_detail', kwargs={'post_id': self.post.id}))
+        html = resp.content.decode('utf-8')
+        self.assertIn('data-luogu-mentions="third"', html)
+        self.assertIn('data-mention-url="/u/__name__/"', html)
+
+    def test_nonexistent_mention_gets_no_link_data(self):
+        self.comment('@nobody 你好')
+        resp = self.client.get(reverse('post_detail', kwargs={'post_id': self.post.id}))
+        self.assertNotIn('data-luogu-mentions', resp.content.decode('utf-8'))
+
+    # ---- API ----
+
+    def test_api_comment_creates_notification(self):
+        self.client.login(username='reader', password='pw12345')
+        resp = self.client.post(
+            '/api/forum/posts/%d/comments/' % self.post.id,
+            {'content': '来自 API 的评论'},
+            content_type='application/json',
+        )
+        self.assertEqual(resp.status_code, 201)
+        self.assertTrue(
+            Notification.objects.filter(recipient=self.author, kind=Notification.KIND_COMMENT).exists()
+        )

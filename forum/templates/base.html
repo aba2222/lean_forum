@@ -158,6 +158,20 @@
               <span id="theme-icon"></span>
             </a>
             {% if user.is_authenticated %}
+              <a
+                class="btn btn-link p-2 position-relative"
+                href="{% url 'notification_list' %}"
+                title="通知"
+                aria-label="通知{% if unread_notification_count %}（{{ unread_notification_count }} 条未读）{% endif %}"
+              >
+                <span aria-hidden="true">{% include 'forum/icons/bell.svg' %}</span>
+                {% if unread_notification_count %}
+                  <span
+                    class="position-absolute top-0 start-100 translate-middle badge rounded-pill text-bg-danger"
+                    >{{ unread_notification_count }}</span
+                  >
+                {% endif %}
+              </a>
               <div class="nav-item dropdown">
                 <a
                   class="nav-link dropdown-toggle d-flex align-items-center gap-2"

@@ -1,12 +1,12 @@
 from .models import Post, Comment, Collection, Profile
 from .avatars import normalize_avatar, delete_avatar_file
+from .notifications import extract_mentions
 
 from md_editor.models import MDTextFormField
 from md_editor.widgets import MDEditorWidget
 
 from django import forms
 from django.core.files.uploadedfile import UploadedFile
-import re
 
 BIO_MAX_LENGTH = 200
 
@@ -25,8 +25,9 @@ class MDEditorModelForm(forms.ModelForm):
     
     def clean_content(self):
         content = self.cleaned_data["content"]
-        mentions = re.findall(r'@(\w+)', content)
-        self.cleaned_data["mentions"] = mentions
+        # @提及：与站内通知共用同一个正则。
+        # 原来的 r'@(\w+)' 不匹配中文，@测试用户 这样的提及识别不出来。
+        self.cleaned_data["mentions"] = extract_mentions(content)
         return content
     
     def save(self, commit=True):

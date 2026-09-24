@@ -6,16 +6,20 @@
   这样「预览看到的」和「发布后看到的」不会有两套排版。
 
   用法：
-    {% include 'forum/_markdown.html' with markdown=post.content fallback_html=post.content_html extra_class='mb-4' %}
+    {% include 'forum/_markdown.html' with markdown=post.content fallback_html=post.content_html extra_class='mb-4' mentions=post.content|valid_mentions %}
 
   参数：
     markdown      原始 Markdown（会写进 data 属性，Django 转义后放在双引号里是安全的）
     fallback_html 服务端渲染结果，仅作无脚本兜底
     extra_class   追加到容器上的类名，可选
+    mentions      内容里真实存在的被 @ 用户名（逗号分隔），渲染时只给这些加链接；
+                  不传或为空则不处理提及。由 forum_extras.valid_mentions 计算，
+                  只在内容里真的出现 @ 时才查一次库。
 {% endcomment %}
 <div
   class="lmd-root lmd-content{% if extra_class %} {{ extra_class }}{% endif %}"
   data-luogu-markdown="{{ markdown }}"
+  {% if mentions %}data-luogu-mentions="{{ mentions }}" data-mention-url="{% url 'profile' username='__name__' %}"{% endif %}
 >
   <div class="preview-content lmd-fallback">{{ fallback_html|safe }}</div>
 </div>

@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% load humanize forum_extras %}
+
+{% block title %}通知{% endblock %}
+
+{% block content %}
+  <div class="row justify-content-center">
+    <div class="col-12 col-lg-9">
+      <header class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+        <div>
+          <h1 class="h3 mb-1">通知</h1>
+          <p class="text-muted mb-0">
+            {% if unread_count %}
+              有 {{ unread_count }} 条未读
+            {% else %}
+              全部已读
+            {% endif %}
+          </p>
+        </div>
+        {% if unread_count %}
+          <form method="post" action="{% url 'notification_read_all' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-secondary btn-sm">
+              <span aria-hidden="true">{% include 'forum/icons/check-lg.svg' %}</span>
+              全部标为已读
+            </button>
+          </form>
+        {% endif %}
+      </header>
+
+      {% if notifications %}
+        <div class="list-group shadow-sm">
+          {% for note in notifications %}
+            <form method="post" action="{% url 'notification_read' note.id %}" class="list-group-item list-group-item-action p-0 position-relative{% if not note.is_read %} list-group-item-primary{% endif %}">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-link text-decoration-none text-body text-start w-100 p-3 d-flex gap-3 align-items-start">
+                {% avatar note.actor 40 %}
+                <span class="flex-grow-1 min-w-0">
+                  <span class="d-block">
+                    <strong>{{ note.actor.username }}</strong>
+                    <span class="text-muted">{{ note.summary }}</span>
+                    {% if not note.is_read %}
+                      <span class="badge text-bg-danger ms-1">未读</span>
+                    {% endif %}
+                  </span>
+                  {% if note.preview %}
+                    <span class="d-block text-muted small text-truncate">{{ note.preview }}</span>
+                  {% endif %}
+                  <span class="d-block text-muted small">
+                    {% if note.post %}{{ note.post.title }} · {% endif %}{{ note.created_at|naturaltime }}
+                  </span>
+                </span>
+              </button>
+            </form>
+          {% endfor %}
+        </div>
+
+        {% if page_obj.has_other_pages %}
+          <nav class="pagination mt-4" aria-label="通知分页">
+            <ul class="pagination justify-content-center mb-0">
+              {% if page_obj.has_previous %}
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">上一页</a></li>
+              {% endif %}
+              <li class="page-item disabled"><span class="page-link">第 {{ page_obj.number }} 页 / 共 {{ page_obj.paginator.num_pages }} 页</span></li>
+              {% if page_obj.has_next %}
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">下一页</a></li>
+              {% endif %}
+            </ul>
+          </nav>
+        {% endif %}
+      {% else %}
+        <div class="alert alert-light border d-flex align-items-center gap-2">
+          <span aria-hidden="true">{% include 'forum/icons/bell.svg' %}</span>
+          <div>还没有通知。有人评论你的帖子、或在内容里 @ 你时，会出现在这里。</div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}
