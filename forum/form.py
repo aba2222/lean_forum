@@ -1,6 +1,9 @@
 from .models import Post, Comment, Collection, Profile
 from .avatars import normalize_avatar, delete_avatar_file
 
+from md_editor.models import MDTextFormField
+from md_editor.widgets import MDEditorWidget
+
 from django import forms
 from django.core.files.uploadedfile import UploadedFile
 import re
@@ -62,6 +65,13 @@ class CollectionForm(forms.ModelForm):
 
 # TODO: support @xxx
 class MDEditorCommentForm(forms.ModelForm):
+    # 评论框用矮一点的编辑器，免得评论区被两栏编辑器占满
+    content = MDTextFormField(
+        max_length=40000,
+        label='内容',
+        widget=MDEditorWidget(compact=True),
+    )
+
     def __init__(self, *args, user=None, post=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.user = user
@@ -109,8 +119,8 @@ class ProfileForm(forms.ModelForm):
             'avatar': forms.ClearableFileInput(
                 attrs={'accept': 'image/png,image/jpeg,image/webp', 'class': 'form-control'}
             ),
-            # content 沿用 md_editor 的 MDEditorWidget（MDTextFormField 自带），
-            # 保证简介的 Markdown 编辑体验与发帖/评论完全一致
+            # content 用洛谷编辑器（MDTextFormField 自带），简介不算长，用紧凑高度
+            'content': MDEditorWidget(compact=True),
             'website': forms.URLInput(
                 attrs={
                     'class': 'form-control',

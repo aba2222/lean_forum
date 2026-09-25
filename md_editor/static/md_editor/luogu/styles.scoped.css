@@ -1,0 +1,2476 @@
+/* 由 vendor/scope_css.py 从上游 styles.css 生成，请勿手改。
+   作用域：.lmd-root —— 所有选择器都被限制在该容器内，
+   避免上游的全局重置（* { margin:0 } / html,body { overflow:hidden }）污染论坛页面。 */
+
+/* ==========================================================================
+   Luogu Markdown + KaTeX Editor - Windows & Web Stylesheet
+   ========================================================================== */
+.lmd-root{
+  /* Luogu Light Theme Colors */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f9fa;
+  --bg-tertiary: #f1f3f5;
+  --bg-editor: #ffffff;
+  --bg-preview: #ffffff;
+  --text-primary: #2c3e50;
+  --text-secondary: #6c757d;
+  --text-muted: #adb5bd;
+  --border-color: #e9ecef;
+  --border-focus: #3498db;
+  
+  /* Brand & Accent Colors */
+  --luogu-blue: #3498db;
+  --luogu-blue-dark: #2980b9;
+  --luogu-blue-light: #ebf5fb;
+  --luogu-green: #2ecc71;
+  --luogu-green-dark: #27ae60;
+  --luogu-green-light: #eafaf1;
+  --luogu-orange: #e67e22;
+  --luogu-orange-light: #fef5e7;
+  --luogu-red: #e74c3c;
+  --luogu-red-light: #fdedec;
+  --luogu-purple: #9b59b6;
+  
+  /* UI Dimensions & Shadows */
+  --header-height: 48px;
+  --toolbar-height: 44px;
+  --statusbar-height: 28px;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.15), 0 4px 10px rgba(0, 0, 0, 0.08);
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  
+  /* Fonts */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "WenQuanYi Micro Hei", sans-serif;
+  --font-mono: "Cascadia Code", "Fira Code", "Consolas", "Courier New", monospace;
+  --font-math: "KaTeX_Main", "Times New Roman", serif;
+}
+/* Dark Theme */
+.lmd-root[data-theme="dark"]{
+  --bg-primary: #1e1e1e;
+  --bg-secondary: #252526;
+  --bg-tertiary: #2d2d30;
+  --bg-editor: #1e1e1e;
+  --bg-preview: #1e1e1e;
+  --text-primary: #d4d4d4;
+  --text-secondary: #9da5b4;
+  --text-muted: #5c6370;
+  --border-color: #333333;
+  --border-focus: #007acc;
+  
+  --luogu-blue: #007acc;
+  --luogu-blue-dark: #005999;
+  --luogu-blue-light: #1a2f42;
+  --luogu-green: #388e3c;
+  --luogu-green-light: #1e3323;
+  --luogu-orange: #d97706;
+  --luogu-orange-light: #3d2b14;
+  --luogu-red: #d32f2f;
+  --luogu-red-light: #3b1b1b;
+}
+/* Academic White Theme */
+.lmd-root[data-theme="academic"]{
+  --bg-primary: #fafafa;
+  --bg-secondary: #f4f4f5;
+  --bg-tertiary: #e4e4e7;
+  --bg-editor: #ffffff;
+  --bg-preview: #ffffff;
+  --text-primary: #18181b;
+  --text-secondary: #52525b;
+  --text-muted: #a1a1aa;
+  --border-color: #e4e4e7;
+  --border-focus: #18181b;
+  --luogu-blue: #2563eb;
+  --luogu-blue-light: #eff6ff;
+}
+/* Reset & Base */
+.lmd-root *,
+.lmd-root *::before,
+.lmd-root *::after{
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+.lmd-root,
+.lmd-root{
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+  -webkit-font-smoothing: antialiased;
+}
+/* App Container Layout */
+.lmd-root #app{
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+/* Header & Titlebar */
+.lmd-root .app-header{
+  height: var(--header-height);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  user-select: none;
+  z-index: 100;
+  position: relative;
+}
+.lmd-root .brand-section{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.lmd-root .app-title-group{
+  display: flex;
+  flex-direction: column;
+}
+.lmd-root .app-title{
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.lmd-root .app-badge{
+  font-size: 10px;
+  padding: 2px 7px;
+  background: var(--luogu-blue-light);
+  color: var(--luogu-blue);
+  border-radius: 10px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+.lmd-root .header-center{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.lmd-root .doc-name-input{
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  text-align: center;
+  transition: all 0.2s;
+  min-width: 180px;
+}
+.lmd-root .doc-name-input:hover{
+  background: var(--bg-tertiary);
+}
+.lmd-root .doc-name-input:focus{
+  background: var(--bg-primary);
+  border-color: var(--border-focus);
+  outline: none;
+}
+.lmd-root .header-actions{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+}
+/* Button Styles */
+.lmd-root .btn{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  white-space: nowrap;
+}
+.lmd-root .btn:hover{
+  background: var(--bg-tertiary);
+  border-color: var(--text-muted);
+}
+.lmd-root .btn-primary{
+  background: var(--luogu-blue);
+  color: #ffffff;
+  border-color: var(--luogu-blue);
+}
+.lmd-root .btn-primary:hover{
+  background: var(--luogu-blue-dark);
+  border-color: var(--luogu-blue-dark);
+}
+.lmd-root .btn-success{
+  background: var(--luogu-green);
+  color: #ffffff;
+  border-color: var(--luogu-green);
+}
+.lmd-root .btn-success:hover{
+  background: var(--luogu-green-dark);
+  border-color: var(--luogu-green-dark);
+}
+.lmd-root .btn-icon-only{
+  padding: 5px 8px;
+}
+.lmd-root .btn svg{
+  width: 14px;
+  height: 14px;
+}
+/* Toolbar */
+.lmd-root .toolbar-container{
+  height: var(--toolbar-height);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 4px;
+  overflow: visible;
+  user-select: none;
+  z-index: 50;
+  position: relative;
+}
+.lmd-root .toolbar-group{
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  position: relative;
+}
+.lmd-root .toolbar-divider{
+  width: 1px;
+  height: 20px;
+  background: var(--border-color);
+  margin: 0 6px;
+  flex-shrink: 0;
+}
+.lmd-root .tool-btn{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  min-width: 30px;
+  padding: 0 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+  white-space: nowrap;
+  font-size: 12px;
+  transition: background-color 0.1s, border-color 0.1s;
+}
+.lmd-root .tool-btn:hover{
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.lmd-root .tool-btn.active{
+  background: var(--luogu-blue-light);
+  color: var(--luogu-blue);
+  border-color: var(--luogu-blue);
+}
+.lmd-root .tool-btn svg{
+  width: 16px;
+  height: 16px;
+}
+/* Dropdown Tool */
+.lmd-root .tool-dropdown{
+  position: relative;
+  display: inline-flex;
+}
+.lmd-root .dropdown-menu{
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 0;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.18), 0 3px 8px rgba(0, 0, 0, 0.08);
+  min-width: 190px;
+  max-width: 340px;
+  z-index: 9999;
+  padding: 6px;
+}
+/* Invisible hover bridge */
+.lmd-root .dropdown-menu::before{
+  content: "";
+  position: absolute;
+  top: -12px;
+  left: 0;
+  right: 0;
+  height: 12px;
+  background: transparent;
+}
+/* Right-side dropdown alignment */
+.lmd-root .header-actions .dropdown-menu,
+.lmd-root .dropdown-menu-right,
+.lmd-root .toolbar-container > div:last-child .dropdown-menu{
+  left: auto !important;
+  right: 0 !important;
+}
+.lmd-root .tool-dropdown:hover .dropdown-menu,
+.lmd-root .tool-dropdown.open .dropdown-menu{
+  display: block;
+}
+.lmd-root .dropdown-item{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  font-size: 12px;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.lmd-root .dropdown-item:hover{
+  background: var(--bg-tertiary);
+  color: var(--luogu-blue);
+}
+.lmd-root .dropdown-item svg{
+  width: 14px;
+  height: 14px;
+}
+/* Main Workspace Split View */
+.lmd-root .main-workspace{
+  flex: 1;
+  display: flex;
+  width: 100%;
+  height: calc(100vh - var(--header-height) - var(--toolbar-height) - var(--statusbar-height));
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
+}
+/* Editor Pane */
+.lmd-root .editor-pane{
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-editor);
+  border-right: 1px solid var(--border-color);
+  position: relative;
+  min-width: 250px;
+}
+.lmd-root .pane-header{
+  height: 28px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  user-select: none;
+}
+.lmd-root .editor-wrapper{
+  flex: 1;
+  display: flex;
+  position: relative;
+  overflow: hidden;
+}
+.lmd-root .line-numbers-gutter{
+  position: relative;
+  width: 52px;
+  padding: 12px 10px 12px 8px;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  background: transparent;
+  user-select: none;
+  overflow: visible;
+  will-change: transform;
+  /* Numbers are absolutely positioned at measured offsets because soft-wrapped
+     lines have varying heights. */
+  white-space: nowrap;
+}
+.lmd-root .gutter-num-abs{
+  position: absolute;
+  right: 10px;
+}
+/* Each gutter row must occupy exactly one text line so the numbers stay aligned
+   with the textarea (which uses white-space: pre, i.e. one row per logical line). */
+/* Stacking context for the line-number column. */
+.lmd-root .gutter-stack{
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  overflow: hidden;
+  /* The number layer is translated to follow the textarea's scroll, so this
+     container clips it. */
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
+}
+.lmd-root .editor-textarea{
+  flex: 1;
+  height: 100%;
+  padding: 12px 16px;
+  border: none;
+  outline: none;
+  resize: none;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-primary);
+  background: var(--bg-editor);
+  tab-size: 4;
+  /* Soft-wrap long lines so nothing hides off-screen horizontally. A logical line may
+     now span several visual rows, so the gutter can no longer assume one row per line;
+     it measures each line's real height instead (see measureLineTops). */
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+/* Resizer Splitter */
+.lmd-root .split-resizer{
+  width: 6px;
+  height: 100%;
+  background: var(--border-color);
+  cursor: col-resize;
+  transition: background 0.15s;
+  z-index: 5;
+}
+.lmd-root .split-resizer:hover,
+.lmd-root .split-resizer.resizing{
+  background: var(--luogu-blue);
+}
+/* Preview Pane */
+.lmd-root .preview-pane{
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-preview);
+  min-width: 250px;
+  overflow: hidden;
+}
+.lmd-root .preview-content{
+  flex: 1;
+  padding: 24px 32px;
+  overflow-y: auto;
+  /* Positioning context for Typora's overlay editors, which are placed in the
+     scroll container's own coordinate space. */
+  position: relative;
+  line-height: 1.75;
+  color: var(--text-primary);
+  word-break: break-word;
+}
+/* View Mode States */
+.lmd-root .mode-editor-only .preview-pane,
+.lmd-root .mode-editor-only .split-resizer{
+  display: none !important;
+}
+.lmd-root .mode-preview-only .editor-pane,
+.lmd-root .mode-preview-only .split-resizer{
+  display: none !important;
+}
+/* Typora mode: the preview pane becomes the whole workspace and doubles as the
+   editor. The source textarea stays in the DOM (it remains the canonical document
+   and every other feature reads from it) but is hidden along with the resizer. */
+.lmd-root .mode-typora .editor-pane,
+.lmd-root .mode-typora .split-resizer{
+  display: none !important;
+}
+.lmd-root .mode-typora .preview-pane{
+  /* Centre the column the way a document editor does, rather than letting text run
+     the full width of a maximised window. Tables and code blocks in solutions are
+     wide, so this is deliberately roomier than a prose-only measure. */
+  --typora-measure: 1000px;
+}
+.lmd-root .mode-typora .preview-content{
+  max-width: var(--typora-measure);
+  margin: 0 auto;
+  padding: 24px 32px 45vh;
+  /* Generous bottom padding keeps the last block reachable above the fold once it
+     expands into a textarea. It doubles as the click target for "start a new
+     paragraph at the end", so it must stay tall even for an empty document. */
+  min-height: 100%;
+  box-sizing: border-box;
+  cursor: text;
+}
+/* Hint that blocks are clickable, without the noise of a permanent outline. */
+.lmd-root .preview-content.typora-mode > *{
+  border-radius: 4px;
+  transition: background-color 0.12s ease;
+}
+.lmd-root .preview-content.typora-mode > *:hover{
+  cursor: text;
+}
+/* Only tint blocks that have no surface of their own. A code block / table / bilibili
+   card / callout paints its own background, and washing --bg-secondary over it made
+   the light theme show pale syntax colours on white. */
+.lmd-root .preview-content.typora-mode > *:hover:not(.luogu-code-block-wrapper):not(.luogu-code-block-wrap):not(.luogu-table-wrapper):not(.luogu-bilibili-container):not(details.luogu-callout):not(ul):not(ol){
+  background-color: var(--bg-secondary);
+}
+/* A list is edited one item at a time, so the hover affordance must point at the
+   item under the pointer rather than washing over the whole list. Innermost wins:
+   on a nested list only the deepest <li> containing the pointer lights up. */
+.lmd-root .preview-content.typora-mode li:hover{
+  cursor: text;
+}
+.lmd-root .preview-content.typora-mode li:hover > :not(ul):not(ol),
+.lmd-root .preview-content.typora-mode li:hover{
+  background-color: var(--bg-secondary);
+  border-radius: 4px;
+}
+.lmd-root .preview-content.typora-mode li:hover ul,
+.lmd-root .preview-content.typora-mode li:hover ol,
+.lmd-root .preview-content.typora-mode li:has(li:hover){
+  background-color: transparent;
+}
+/* Blocks that paint their own background must not be tinted by the generic hover
+   above: a code block has a dark surface of its own, and washing --bg-secondary over
+   it (or over a table's zebra striping) produced visibly wrong colours. Highlight
+   them with a ring instead, which reads on both light and dark themes. */
+.lmd-root .preview-content.typora-mode > .luogu-code-block-wrapper:hover,
+.lmd-root .preview-content.typora-mode > .luogu-code-block-wrap:hover,
+.lmd-root .preview-content.typora-mode > .luogu-table-wrapper:hover,
+.lmd-root .preview-content.typora-mode > .luogu-bilibili-container:hover,
+.lmd-root .preview-content.typora-mode > details.luogu-callout:hover{
+  /* Deliberately does NOT touch background-color. These blocks paint their own
+     surface (a code block stays dark even under the light theme); an earlier version
+     forced `transparent` here, which dropped that background and left pale syntax
+     colours on white. The ring alone is enough of a hover affordance. */
+  box-shadow: 0 0 0 2px var(--luogu-blue-light, rgba(52, 152, 219, 0.35));
+}
+/* Inside those blocks, highlight the actual sub-target instead. */
+.lmd-root .preview-content.typora-mode .luogu-table td:hover,
+.lmd-root .preview-content.typora-mode .luogu-table th:hover{
+  box-shadow: inset 0 0 0 2px var(--luogu-blue);
+  cursor: text;
+}
+/* Only the title text is editable, so it is the only part of the header that gets a
+   text cursor and an edit affordance; the rest of the summary still toggles. */
+.lmd-root .preview-content.typora-mode .luogu-callout-title:hover{
+  cursor: text;
+  text-decoration: underline dashed;
+  text-underline-offset: 3px;
+  background: rgba(52, 152, 219, 0.12);
+  border-radius: 3px;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.12);
+}
+.lmd-root .preview-content.typora-mode .luogu-callout-summary{
+  cursor: pointer;
+}
+.lmd-root .preview-content.typora-mode .luogu-callout-icon:hover{
+  cursor: pointer;
+  filter: brightness(1.25);
+}
+.lmd-root .preview-content.typora-mode pre[data-code-body]:hover{
+  cursor: text;
+}
+/* Sub-block editors sit inside an existing block, so they must not inherit the
+   full-width block spacing the top-level editor uses. */
+.lmd-root .typora-partial{
+  margin: 0;
+}
+.lmd-root .typora-code-input{
+  border-radius: 0;
+  border-color: var(--luogu-blue);
+  background: var(--code-bg, #2d2d2d);
+  color: var(--code-fg, #ccc);
+  tab-size: 4;
+}
+/* A cell / title editor should read as inline text, not as a block form field. */
+.lmd-root .typora-inline-input{
+  min-height: 0;
+  padding: 2px 6px;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+.lmd-root .preview-content.typora-mode:focus{
+  outline: none;
+}
+/* The in-place source editor swapped in for the block being edited. */
+.lmd-root .typora-editing{
+  margin: 4px 0;
+}
+.lmd-root .typora-block-input{
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 2.4em;
+  padding: 10px 12px;
+  border: 1px solid var(--luogu-blue);
+  border-radius: 4px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: "JetBrains Mono", "Fira Code", Consolas, "Courier New", monospace;
+  font-size: 14px;
+  line-height: 1.7;
+  resize: none;
+  overflow: hidden;
+  outline: none;
+  white-space: pre-wrap;
+  word-break: break-word;
+  tab-size: 4;
+}
+.lmd-root .typora-block-input:focus{
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.18);
+}
+.lmd-root .typora-block-input::placeholder{
+  color: var(--text-secondary);
+  opacity: 0.6;
+}
+/* A brand-new paragraph is dashed until it has content, so it reads as a draft
+   rather than as a block that already exists in the document. */
+.lmd-root .typora-inserting .typora-block-input{
+  border-style: dashed;
+}
+/* Status Bar */
+.lmd-root .app-statusbar{
+  height: var(--statusbar-height);
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  user-select: none;
+  z-index: 10;
+  position: relative;
+}
+.lmd-root .status-left,
+.lmd-root .status-right{
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.lmd-root .status-item{
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.lmd-root .status-dot{
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--luogu-green);
+}
+.lmd-root .status-score-badge{
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 10px;
+}
+.lmd-root .status-score-good{
+  background: var(--luogu-green-light);
+  color: var(--luogu-green-dark);
+}
+.lmd-root .status-score-warn{
+  background: var(--luogu-orange-light);
+  color: var(--luogu-orange);
+}
+/* ==========================================================================
+   Luogu Markdown Rendered Content Styles (预览与排版样式)
+   ========================================================================== */
+.lmd-root .preview-content h1,
+.lmd-root .preview-content h2,
+.lmd-root .preview-content h3,
+.lmd-root .preview-content h4,
+.lmd-root .preview-content h5,
+.lmd-root .preview-content h6{
+  margin-top: 1.5em;
+  margin-bottom: 0.6em;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.35;
+}
+.lmd-root .preview-content h1{ font-size: 1.85em; border-bottom: 1px solid var(--border-color); padding-bottom: 0.3em; }
+.lmd-root .preview-content h2{ font-size: 1.5em; border-bottom: 1px solid var(--border-color); padding-bottom: 0.25em; }
+.lmd-root .preview-content h3{ font-size: 1.25em; }
+.lmd-root .preview-content h4{ font-size: 1.1em; }
+.lmd-root .preview-content h5{ font-size: 1em; }
+.lmd-root .preview-content h6{ font-size: 0.9em; color: var(--text-secondary); }
+.lmd-root .preview-content p{
+  margin-bottom: 1em;
+}
+/* Emphasis & Inline Elements */
+.lmd-root .preview-content strong{
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.lmd-root .preview-content em{
+  font-style: italic;
+}
+.lmd-root .preview-content del{
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+/* GFM footnotes. Rendered as a trailing <section> separated from the body, with
+   small superscript references in the text. Mirrors remark-gfm's structure so the
+   result matches what Luogu produces. */
+.lmd-root .luogu-footnote-ref a{
+  text-decoration: none;
+  padding: 0 1px;
+}
+.lmd-root .luogu-footnotes{
+  margin-top: 32px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color, #d0d7de);
+  font-size: 0.9em;
+}
+.lmd-root .luogu-footnotes-title{
+  font-size: 1em;
+  font-weight: 600;
+  margin: 0 0 8px;
+  color: var(--text-secondary, #57606a);
+}
+.lmd-root .luogu-footnotes-list{
+  margin: 0;
+  padding-left: 24px;
+}
+.lmd-root .luogu-footnote-item{
+  margin: 4px 0;
+}
+.lmd-root .luogu-footnote-item p{
+  margin: 0;
+}
+.lmd-root .luogu-footnote-back{
+  text-decoration: none;
+  margin-left: 4px;
+}
+.lmd-root .luogu-inline-code{
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  padding: 2px 6px;
+  background: var(--bg-tertiary);
+  color: #e06c75;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+}
+.lmd-root .preview-content hr.luogu-hr{
+  height: 2px;
+  border: none;
+  background: var(--border-color);
+  margin: 1.5em 0;
+}
+.lmd-root .preview-content blockquote.luogu-blockquote{
+  margin: 1em 0;
+  padding: 8px 16px;
+  border-left: 4px solid var(--luogu-blue);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+.lmd-root .preview-content blockquote blockquote{
+  margin: 0.5em 0;
+  border-left-color: var(--luogu-purple);
+}
+/* Links & Images */
+.lmd-root .preview-content a.luogu-link{
+  color: var(--luogu-blue);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.lmd-root .preview-content a.luogu-link:hover{
+  text-decoration: underline;
+  color: var(--luogu-blue-dark);
+}
+.lmd-root .luogu-img-wrapper{
+  display: inline-block;
+  max-width: 100%;
+  margin: 0.5em 0;
+}
+.lmd-root .luogu-img{
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+}
+.lmd-root .luogu-img-error{
+  border: 1px dashed var(--luogu-red);
+  padding: 10px;
+  color: var(--luogu-red);
+  background: var(--luogu-red-light);
+}
+/* Lists & Tasks */
+.lmd-root .preview-content ul.luogu-list,
+.lmd-root .preview-content ol.luogu-list{
+  padding-left: 24px;
+  margin-bottom: 1em;
+}
+.lmd-root .preview-content li{
+  margin-bottom: 0.35em;
+}
+.lmd-root .preview-content ul.luogu-task-list{
+  list-style-type: none;
+  padding-left: 4px;
+}
+.lmd-root .luogu-task-item{
+  display: block;
+  margin-bottom: 6px;
+}
+.lmd-root .luogu-task-item > .luogu-checkbox-label{
+  display: flex;
+  align-items: center;
+}
+.lmd-root .luogu-checkbox-label{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.lmd-root .luogu-task-checkbox{
+  width: 15px;
+  height: 15px;
+  accent-color: var(--luogu-blue);
+  cursor: pointer;
+  flex: none;
+}
+/* The checkbox is the only place that toggles; everything else on the row edits the
+   item. Make that split visible: a pointer cursor on the box, a text caret on the
+   label text (which would otherwise inherit the label's pointer). */
+.lmd-root .preview-content.typora-mode .luogu-checkbox-label{ cursor: text; }
+.lmd-root .preview-content.typora-mode .luogu-task-checkbox{ cursor: pointer; }
+.lmd-root .preview-content.typora-mode .luogu-task-checkbox:hover{
+  outline: 2px solid var(--luogu-blue-light, rgba(52, 152, 219, 0.45));
+  outline-offset: 1px;
+}
+/* Luogu Code Blocks - with Auto-Wrapping in Preview */
+.lmd-root .luogu-code-block-wrapper{
+  margin: 1.2em 0;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: #282c34;
+  color: #abb2bf;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
+}
+.lmd-root .luogu-code-pre,
+.lmd-root .luogu-code-pre code,
+.lmd-root .luogu-code-pre code[class*="language-"],
+.lmd-root .luogu-code-pre pre[class*="language-"],
+.lmd-root pre[class*="language-"],
+.lmd-root code[class*="language-"]{
+  white-space: pre-wrap !important;
+  word-break: break-all !important;
+  word-wrap: break-word !important;
+  overflow-wrap: anywhere !important;
+}
+.lmd-root .luogu-code-pre code,
+.lmd-root .luogu-code-pre code[class*="language-"]{
+  display: block !important;
+  /* Grow to the widest line rather than to the visible width, so that when the
+     block is scrolled right the highlight backgrounds keep covering the row
+     instead of ending at the original fold. min-width keeps short blocks full
+     width so a highlight still spans the pane. */
+  width: max-content !important;
+  min-width: 100% !important;
+  box-sizing: border-box !important;
+}
+.lmd-root .luogu-code-header{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 14px;
+  background: #21252b;
+  border-bottom: 1px solid #181a1f;
+  font-size: 11px;
+  font-weight: 600;
+  user-select: none;
+  gap: 8px;
+}
+.lmd-root .luogu-code-lang{
+  color: #61afef;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+.lmd-root .luogu-code-actions{
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  white-space: nowrap !important;
+}
+.lmd-root .luogu-code-copy-btn{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 3px 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  color: #abb2bf;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  min-width: 64px;
+  height: 24px;
+  line-height: 1;
+}
+.lmd-root .luogu-code-copy-btn:hover{
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+.lmd-root .luogu-code-copy-btn .copy-text{
+  white-space: nowrap !important;
+  display: inline-block;
+}
+.lmd-root .luogu-code-copy-btn .copy-icon{
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  display: inline-block;
+}
+.lmd-root .luogu-code-pre{
+  margin: 0;
+  padding: 12px 0;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  /* The whole block scrolls horizontally, so a single scrollbar sits at the very
+     bottom of the code block. Scrolling per line instead gave every overflowing
+     line its own scrollbar, wedged between that line and the next — it ate into
+     the line's height and covered the line below it. The gutter numbers stay put
+     because they are position:sticky against this scroll container. */
+  overflow-x: auto !important;
+  width: 100%;
+  box-sizing: border-box;
+  display: block !important;
+}
+.lmd-root .code-line{
+  /* Lines do not scroll individually — see .luogu-code-pre. Each row must be at
+     least as wide as the widest line so that highlight backgrounds and the gutter
+     tint extend across the full scrolled width instead of stopping at the fold;
+     `width: max-content` with `min-width: 100%` achieves both. */
+  display: block !important;
+  white-space: pre !important;
+  padding: 0 16px;
+  /* Inherit the <code> width (widest line) so every row — highlighted or not —
+     paints across the whole scrollable width. */
+  min-width: 100%;
+  box-sizing: border-box;
+}
+.lmd-root .code-line-number{
+  display: inline-block !important;
+  position: sticky;
+  left: 0;
+  width: 36px;
+  min-width: 36px;
+  padding-right: 14px;
+  margin-right: 10px;
+  text-align: right;
+  color: #5c6370;
+  background: #282c34;
+  border-right: 1px solid #3e4451;
+  user-select: none;
+  vertical-align: top;
+  z-index: 2;
+}
+.lmd-root .code-line-text{
+  /* Code text beside the gutter, kept on a single row (no wrapping) so it aligns
+     to its own line number; long lines scroll horizontally within the line. */
+  display: inline !important;
+  vertical-align: top;
+  white-space: pre !important;
+  word-break: normal !important;
+  word-wrap: normal !important;
+  overflow-wrap: normal !important;
+}
+.lmd-root .code-line-highlighted{
+  background: rgba(229, 192, 123, 0.15);
+  border-left: 3px solid #e5c07b;
+  padding-left: 13px;
+}
+/* When a line is highlighted, the sticky gutter cell must composite the same
+   translucent highlight over the code background — otherwise the gutter shows a
+   plain dark block that sits "one layer above" the highlight. (The linear-gradient
+   layer + opaque base keeps it opaque so it still masks horizontally-scrolled code.) */
+.lmd-root .code-line-highlighted .code-line-number{
+  background: linear-gradient(rgba(229, 192, 123, 0.15), rgba(229, 192, 123, 0.15)), #282c34;
+}
+/* Tables & Merged Cells */
+.lmd-root .luogu-table-wrapper{
+  width: 100%;
+  overflow-x: auto;
+  margin: 1.2em 0;
+}
+.lmd-root .luogu-table-center-wrapper{
+  display: flex;
+  justify-content: center;
+  margin: 1.4em auto;
+}
+.lmd-root .luogu-table{
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+}
+.lmd-root .luogu-table-center-wrapper .luogu-table{
+  width: auto;
+  max-width: 100%;
+}
+.lmd-root .luogu-table th,
+.lmd-root .luogu-table td{
+  padding: 8px 14px;
+  border: 1px solid var(--border-color);
+}
+.lmd-root .luogu-table th{
+  background: var(--bg-secondary);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.lmd-root .luogu-table tr:nth-child(even) td{
+  background: var(--bg-secondary);
+}
+/* Tuack / Cute-Table Style (洛谷 Tuack 竞赛风格表格) */
+.lmd-root .luogu-tuack-table{
+  border: 2px solid #3498db;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+}
+.lmd-root .luogu-tuack-table th{
+  background: #3498db;
+  color: #ffffff;
+  border: 1px solid #2980b9;
+  font-weight: 600;
+  text-align: center;
+}
+.lmd-root .luogu-tuack-table td{
+  border: 1px solid #d4e6f1;
+}
+.lmd-root .luogu-tuack-table tr:nth-child(even) td{
+  background: #f4f9fd;
+}
+.lmd-root .luogu-tuack-table tr:hover td{
+  background: #eaf2f8;
+}
+/* Dark mode: make the Tuack (contest) table use a dark-appropriate palette
+   instead of the hardcoded light blue. */
+.lmd-root[data-theme="dark"] .luogu-tuack-table{
+  border-color: #1f6feb;
+}
+.lmd-root[data-theme="dark"] .luogu-tuack-table th{
+  background: #1f6feb;
+  border-color: #1759c4;
+}
+.lmd-root[data-theme="dark"] .luogu-tuack-table td{
+  border-color: #2d3a4a;
+}
+.lmd-root[data-theme="dark"] .luogu-tuack-table tr:nth-child(even) td{
+  background: #1c2530;
+}
+.lmd-root[data-theme="dark"] .luogu-tuack-table tr:hover td{
+  background: #24303e;
+}
+.lmd-root .luogu-cute-centered-table{
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+}
+.lmd-root .luogu-cute-centered-table th{
+  background: var(--luogu-blue-light);
+  color: #1f618d;
+  font-weight: 600;
+  text-align: center;
+}
+/* Align Blocks (居中 & 居右排版) */
+.lmd-root .luogu-align-center{
+  text-align: center;
+  margin: 1em 0;
+}
+.lmd-root .luogu-align-right{
+  text-align: right;
+  margin: 1em 0;
+}
+/* Typora mode: alignment containers are otherwise invisible — centred text looks
+   the same whether it came from `:::align{center}` or a lone short line — so the
+   editor marks their extent with a dashed rule and a corner label, the same idea as
+   a callout's coloured edge. Screen/print/export are untouched. */
+.lmd-root .preview-content.typora-mode [class*="luogu-align-"]{
+  position: relative;
+  border: 1px dashed var(--border-color);
+  border-radius: 4px;
+  padding: 10px 12px;
+  margin-top: 1.5em;
+}
+.lmd-root .preview-content.typora-mode [class*="luogu-align-"]::before{
+  position: absolute;
+  top: -0.75em;
+  left: 10px;
+  padding: 0 6px;
+  border-radius: 3px;
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+}
+.lmd-root .preview-content.typora-mode .luogu-align-left::before{ content: "居左"; }
+.lmd-root .preview-content.typora-mode .luogu-align-center::before{ content: "居中"; }
+.lmd-root .preview-content.typora-mode .luogu-align-right::before{ content: "居右"; }
+/* The badge is the control that switches left/center/right, so make it read as
+   clickable rather than as a passive label. */
+.lmd-root .preview-content.typora-mode [class*="luogu-align-"]::before{ cursor: pointer; }
+.lmd-root .preview-content.typora-mode [class*="luogu-align-"]:hover::before{
+  background: var(--luogu-blue, #3498db);
+  color: #fff;
+}
+.lmd-root .preview-content.typora-mode [class*="luogu-align-"]:hover{
+  border-color: var(--luogu-blue);
+}
+.lmd-root .preview-content.typora-mode .luogu-epigraph{
+  border: 1px dashed var(--border-color);
+  border-radius: 4px;
+  margin-top: 1.6em;
+}
+.lmd-root .preview-content.typora-mode .luogu-epigraph::after{
+  content: "引言";
+  position: absolute;
+  top: -0.75em;
+  left: 10px;
+  padding: 0 6px;
+  border-radius: 3px;
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  pointer-events: none;
+}
+/* Epigraph (引言) */
+.lmd-root .luogu-epigraph{
+  position: relative;
+  margin: 1.5em 0;
+  padding: 16px 20px 16px 48px;
+  background: var(--bg-secondary);
+  border-left: 4px solid var(--luogu-blue);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+.lmd-root .luogu-epigraph-quote-mark{
+  position: absolute;
+  top: 6px;
+  left: 14px;
+  font-size: 38px;
+  line-height: 1;
+  font-family: Georgia, serif;
+  color: var(--luogu-blue);
+  opacity: 0.5;
+  user-select: none;
+}
+.lmd-root .luogu-epigraph-body{
+  font-style: italic;
+  font-size: 14px;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+.lmd-root .luogu-epigraph-author{
+  text-align: right;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+/* Foldable Callouts (折叠框: info, success, warning, error) */
+.lmd-root .luogu-callout{
+  margin: 1.2em 0;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+.lmd-root .luogu-callout-summary{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  transition: background 0.15s;
+}
+.lmd-root .luogu-callout-summary::-webkit-details-marker{
+  display: none;
+}
+.lmd-root .luogu-callout-icon{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+.lmd-root .callout-icon-svg{
+  width: 18px;
+  height: 18px;
+}
+.lmd-root .luogu-callout-title{
+  /* Only as wide as the text, with `margin-right:auto` keeping the arrow pinned
+     right. It used to be `flex:1`, which stretched the span across the whole
+     summary — so in Typora mode a click anywhere on the header row landed on the
+     title and opened the rename editor instead of expanding the box. */
+  flex: 0 1 auto;
+  margin-right: auto;
+  min-width: 0;
+}
+.lmd-root .luogu-callout-arrow{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  transition: transform 0.2s ease;
+}
+.lmd-root .arrow-svg{
+  width: 14px;
+  height: 14px;
+}
+.lmd-root .luogu-callout[open] > .luogu-callout-summary .luogu-callout-arrow{
+  transform: rotate(180deg);
+}
+.lmd-root .luogu-callout-content{
+  padding: 12px 16px;
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  font-size: 13px;
+}
+/* Callout Color Schemes */
+.lmd-root .luogu-callout-info{
+  border-left: 4px solid var(--luogu-blue);
+}
+.lmd-root .luogu-callout-info > .luogu-callout-summary{
+  background: var(--luogu-blue-light);
+  color: #1f618d;
+}
+.lmd-root .luogu-callout-success{
+  border-left: 4px solid var(--luogu-green);
+}
+.lmd-root .luogu-callout-success > .luogu-callout-summary{
+  background: var(--luogu-green-light);
+  color: #196f3d;
+}
+.lmd-root .luogu-callout-warning{
+  border-left: 4px solid var(--luogu-orange);
+}
+.lmd-root .luogu-callout-warning > .luogu-callout-summary{
+  background: var(--luogu-orange-light);
+  color: #b9770e;
+}
+.lmd-root .luogu-callout-error{
+  border-left: 4px solid var(--luogu-red);
+}
+.lmd-root .luogu-callout-error > .luogu-callout-summary{
+  background: var(--luogu-red-light);
+  color: #943126;
+}
+/* Bilibili Video Container */
+.lmd-root .luogu-bilibili-container{
+  margin: 1.5em 0;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+  background: #000000;
+  box-shadow: var(--shadow-md);
+}
+.lmd-root .luogu-bilibili-header{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  background: #232323;
+  color: #ffffff;
+  font-size: 11px;
+}
+.lmd-root .luogu-bilibili-badge{
+  background: #fb7299;
+  color: #ffffff;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  font-weight: bold;
+}
+.lmd-root .luogu-bilibili-link{
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #00a1d6;
+  text-decoration: none;
+}
+.lmd-root .luogu-bilibili-link:hover{
+  text-decoration: underline;
+}
+.lmd-root .ext-icon{
+  width: 12px;
+  height: 12px;
+}
+.lmd-root .luogu-bilibili-player-wrapper{
+  position: relative;
+  width: 100%;
+  padding-top: 56.25%; /* 16:9 ratio */
+}
+.lmd-root .luogu-bilibili-player-wrapper iframe{
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+/* Click-to-load placeholder shown in place of the Bilibili iframe. Keeps the app
+   fully offline (and free of third-party trackers) until the user opts in. */
+.lmd-root .luogu-bilibili-facade{
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  background: #111827;
+  color: #e5e7eb;
+  font-size: 13px;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+.lmd-root .luogu-bilibili-facade:hover{
+  background: #1f2937;
+}
+.lmd-root .luogu-bilibili-facade:focus-visible{
+  outline: 2px solid #38bdf8;
+  outline-offset: -2px;
+}
+.lmd-root .luogu-bilibili-play-icon{
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #fb7299;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.lmd-root .luogu-bilibili-play-icon svg{
+  width: 28px;
+  height: 28px;
+  margin-left: 3px;
+}
+/* KaTeX Formulas */
+.lmd-root .luogu-math-display{
+  margin: 1.2em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  text-align: center;
+  padding: 6px 0;
+}
+.lmd-root .luogu-math-inline{
+  display: inline-block;
+  padding: 0 2px;
+}
+.lmd-root .katex-error{
+  color: var(--luogu-red);
+  background: var(--luogu-red-light);
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+/* ==========================================================================
+   Modals & Drawers (模态框、公式抽屉、表格生成器)
+   ========================================================================== */
+.lmd-root .modal-overlay{
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  /* Solid dim only — backdrop-filter:blur forces a full-viewport backdrop
+     repaint on every hover style change inside the dialog (esp. KaTeX cards). */
+  background: rgba(0, 0, 0, 0.48);
+  z-index: 10000;
+  align-items: center;
+  justify-content: center;
+}
+.lmd-root .modal-overlay.active{
+  display: flex;
+}
+.lmd-root .modal-dialog{
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  width: 90%;
+  max-width: 580px;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: modalFadeIn 0.2s ease;
+}
+.lmd-root .modal-dialog-large{
+  max-width: 960px;
+  width: 94%;
+}
+@keyframes  modalFadeIn {
+  from { opacity: 0; transform: translateY(-10px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.lmd-root .modal-header{
+  height: 48px;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  flex-shrink: 0;
+}
+.lmd-root .modal-title{
+  font-size: 15px;
+  font-weight: 600;
+}
+.lmd-root .modal-close-btn{
+  background: transparent;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 4px;
+  line-height: 1;
+}
+.lmd-root .modal-close-btn:hover{
+  color: var(--text-primary);
+}
+.lmd-root .modal-body{
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+.lmd-root .modal-footer{
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  flex-shrink: 0;
+}
+/* Form Controls in Modal */
+.lmd-root .form-group{
+  margin-bottom: 16px;
+}
+.lmd-root .form-label{
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--text-primary);
+}
+.lmd-root .form-input,
+.lmd-root .form-select{
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 13px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.lmd-root .form-input:focus,
+.lmd-root .form-select:focus{
+  border-color: var(--border-focus);
+}
+.lmd-root .form-hint{
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+/* Formula Drawer Grid
+   Hover must stay GPU-cheap: KaTeX trees are deep, so never change the card's
+   own background/border on :hover (that invalidates paint for every nested
+   span). Instead, fade a single ::before overlay via opacity only. */
+.lmd-root .math-tabs{
+  display: flex;
+  gap: 6px;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 16px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  /* Isolate tab strip repaints from the formula grid below. */
+  contain: layout style;
+}
+.lmd-root .math-tab-btn{
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: none;
+}
+.lmd-root .math-tab-btn.active{
+  background: var(--luogu-blue-light);
+  color: var(--luogu-blue);
+  font-weight: 600;
+}
+/* Panels stay mounted; only [hidden] toggles. Avoids re-parsing KaTeX HTML. */
+.lmd-root .math-tab-panel{
+  display: block;
+}
+.lmd-root .math-tab-panel[hidden]{
+  display: none !important;
+}
+.lmd-root .math-grid{
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 8px;
+  padding: 2px;
+}
+.lmd-root .math-grid-wide{
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+.lmd-root .math-item-card{
+  /* <button> reset — cards are real buttons for a11y + no inline onclick */
+  appearance: none;
+  -webkit-appearance: none;
+  font: inherit;
+  color: inherit;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 6px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  min-height: 66px;
+  max-width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+  position: relative;
+  /* Isolate each card so hover compositing never dirties siblings. */
+  contain: layout style paint;
+  transition: none !important;
+}
+/* Hover highlight is a separate overlay layer — only its opacity changes. */
+.lmd-root .math-item-card::before{
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  /* 1px inset ring + fill without touching the card's own border/background */
+  box-shadow: inset 0 0 0 1px var(--luogu-blue);
+  background: var(--luogu-blue-light);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 0;
+  /* opacity-only = compositor-friendly, no layout/paint of KaTeX children */
+  transition: opacity 0.06s linear;
+}
+.lmd-root .math-item-card:hover::before,
+.lmd-root .math-item-card:focus-visible::before{
+  opacity: 0.92;
+}
+.lmd-root .math-item-card:focus{
+  outline: none;
+}
+.lmd-root .math-item-card:focus-visible{
+  outline: 2px solid var(--luogu-blue);
+  outline-offset: 1px;
+}
+.lmd-root .math-item-card.card-wide{
+  grid-column: span 2;
+}
+/* IMPORTANT: do NOT change background/border on the card itself on :hover.
+   That path is what made KaTeX hover feel sticky. */
+.lmd-root .math-item-preview{
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 100%;
+  /* overflow:auto creates a scrollable layer that reflows on every hover paint;
+     clip keeps glyphs inside without a scrollport. */
+  overflow: hidden;
+  font-size: 13px;
+  margin-bottom: 4px;
+  padding: 2px 0;
+  pointer-events: none !important;
+  /* Keep KaTeX subtree from participating in hit-testing / hover invalidation. */
+  contain: layout style paint;
+}
+.lmd-root .math-item-preview *{
+  pointer-events: none !important;
+}
+.lmd-root .math-item-preview .katex{
+  /* Prevent KaTeX from expanding the card and causing sibling reflow */
+  max-width: 100%;
+  font-size: 1.05em;
+}
+.lmd-root .math-item-preview .katex-display{
+  margin: 0 !important;
+  font-size: 0.9em;
+}
+.lmd-root .math-item-label{
+  position: relative;
+  z-index: 1;
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  pointer-events: none !important;
+}
+/* Table Generator Grid */
+.lmd-root .table-builder-grid-preview{
+  margin: 14px 0;
+  overflow-x: auto;
+}
+.lmd-root .grid-table-editor{
+  border-collapse: collapse;
+  width: 100%;
+}
+.lmd-root .grid-table-editor td,
+.lmd-root .grid-table-editor th{
+  border: 1px solid var(--border-color);
+  padding: 6px 8px;
+  position: relative;
+}
+.lmd-root .grid-cell-input{
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 12px;
+  text-align: center;
+}
+.lmd-root .grid-cell-tools{
+  display: flex;
+  gap: 2px;
+  justify-content: center;
+  margin-top: 4px;
+}
+.lmd-root .btn-mini{
+  padding: 1px 4px;
+  font-size: 10px;
+  border-radius: 2px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  cursor: pointer;
+}
+/* Toast Notifications */
+.lmd-root .toast-container{
+  position: fixed;
+  bottom: 38px;
+  right: 20px;
+  z-index: 20000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.lmd-root .toast{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: #2c3e50;
+  color: #ffffff;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  box-shadow: var(--shadow-lg);
+  animation: toastSlideIn 0.2s ease;
+}
+.lmd-root .toast-success{ background: #27ae60; }
+.lmd-root .toast-error{ background: #e74c3c; }
+.lmd-root .toast-info{ background: #2980b9; }
+@keyframes  toastSlideIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+/* ==========================================================================
+   Print & PDF Stylesheet (100% 解决所有 PDF 导出与打印 Bug)
+   ========================================================================== */
+@media  print {
+.lmd-root .print-light:root,
+.lmd-root .print-light[data-theme="light"],
+.lmd-root .print-light[data-theme="dark"],
+.lmd-root .print-light[data-theme="academic"]{
+    --bg-primary: #ffffff;
+    --bg-secondary: #f6f8fa;
+    --bg-tertiary: #eef1f4;
+    --bg-editor: #ffffff;
+    --bg-preview: #ffffff;
+    --text-primary: #24292e;
+    --text-secondary: #57606a;
+    --text-muted: #6e7781;
+    --border-color: #d0d7de;
+    --luogu-blue: #3498db;
+    --luogu-blue-light: #eff6fb;
+    --luogu-green: #2eaf5e;
+    --luogu-green-light: #eafaf1;
+    --luogu-orange: #e67e22;
+    --luogu-orange-light: #fef5e7;
+    --luogu-red: #e74c3c;
+    --luogu-red-light: #fdecea;
+  }
+.lmd-root .luogu-tuack-table{
+    border-color: #3498db !important;
+  }
+.lmd-root .luogu-tuack-table th{
+    background: #3498db !important;
+    border-color: #2980b9 !important;
+  }
+.lmd-root .luogu-tuack-table td{
+    border-color: #d4e6f1 !important;
+  }
+.lmd-root .luogu-tuack-table tr:nth-child(even) td{
+    background: #f4f9fd !important;
+  }
+.lmd-root .luogu-tuack-table tr:hover td{
+    background: #eaf2f8 !important;
+  }
+@page  {
+    size: A4 portrait;
+    margin: 15mm 15mm 15mm 15mm;
+  }
+.lmd-root *,
+.lmd-root *::before,
+.lmd-root *::after{
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+.lmd-root,
+.lmd-root{
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    font-size: 11pt !important;
+    line-height: 1.6 !important;
+  }
+.lmd-root .print-light,
+.lmd-root .print-light body{
+    background: #ffffff !important;
+    color: #24292e !important;
+  }
+.lmd-root .print-dark,
+.lmd-root .print-dark body{
+    background: #1e1e1e !important;
+    color: #e6e6e6 !important;
+  }
+.lmd-root #app,
+.lmd-root .main-workspace,
+.lmd-root .preview-pane,
+.lmd-root .preview-content{
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+.lmd-root .print-light #app,
+.lmd-root .print-light .main-workspace,
+.lmd-root .print-light .preview-pane,
+.lmd-root .print-light .preview-content{
+    background: #ffffff !important;
+  }
+.lmd-root .print-dark #app,
+.lmd-root .print-dark .main-workspace,
+.lmd-root .print-dark .preview-pane,
+.lmd-root .print-dark .preview-content{
+    background: #1e1e1e !important;
+    color: #e6e6e6 !important;
+  }
+.lmd-root .app-header,
+.lmd-root .toolbar-container,
+.lmd-root .editor-pane,
+.lmd-root .split-resizer,
+.lmd-root .app-statusbar,
+.lmd-root .modal-overlay,
+.lmd-root .toast-container,
+.lmd-root .pane-header,
+.lmd-root .luogu-code-actions,
+.lmd-root .luogu-code-copy-btn,
+.lmd-root button.luogu-code-copy-btn,
+.lmd-root .copy-icon,
+.lmd-root .copy-text{
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+  }
+.lmd-root h1,
+.lmd-root h2,
+.lmd-root h3,
+.lmd-root h4,
+.lmd-root h5,
+.lmd-root h6{
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+.lmd-root .print-light h1,
+.lmd-root .print-light h2,
+.lmd-root .print-light h3,
+.lmd-root .print-light h4,
+.lmd-root .print-light h5,
+.lmd-root .print-light h6{
+    color: #1a1a1a !important;
+  }
+.lmd-root .print-dark h1,
+.lmd-root .print-dark h2,
+.lmd-root .print-dark h3,
+.lmd-root .print-dark h4,
+.lmd-root .print-dark h5,
+.lmd-root .print-dark h6{
+    color: #f0f0f0 !important;
+  }
+.lmd-root p,
+.lmd-root blockquote,
+.lmd-root .luogu-p{
+    orphans: 3;
+    widows: 3;
+  }
+.lmd-root pre,
+.lmd-root code,
+.lmd-root .luogu-code-block-wrapper,
+.lmd-root .luogu-callout,
+.lmd-root .luogu-epigraph,
+.lmd-root .luogu-table-wrapper,
+.lmd-root table{
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+.lmd-root tr{
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+.lmd-root .print-light .luogu-code-block-wrapper .token.comment,
+.lmd-root .print-light .luogu-code-block-wrapper .token.block-comment,
+.lmd-root .print-light .luogu-code-block-wrapper .token.prolog,
+.lmd-root .print-light .luogu-code-block-wrapper .token.doctype,
+.lmd-root .print-light .luogu-code-block-wrapper .token.cdata{
+    color: #6a737d !important;
+  }
+.lmd-root .print-light .luogu-code-block-wrapper .token.punctuation,
+.lmd-root .print-light .luogu-code-block-wrapper .token.double-colon{
+    color: #24292e !important;
+  }
+.lmd-root .print-light .luogu-code-block-wrapper .token.tag,
+.lmd-root .print-light .luogu-code-block-wrapper .token.attr-name,
+.lmd-root .print-light .luogu-code-block-wrapper .token.namespace,
+.lmd-root .print-light .luogu-code-block-wrapper .token.deleted{
+    color: #b31d28 !important;
+  }
+.lmd-root .print-light .luogu-code-block-wrapper .token.function-name,
+.lmd-root .print-light .luogu-code-block-wrapper .token.function{
+    color: #6f42c1 !important;
+  }
+.lmd-root .print-light .luogu-code-block-wrapper .token.boolean,
+.lmd-root .print-light .luogu-code-block-wrapper .token.number,
+.lmd-root .print-light .luogu-code-block-wrapper .token.constant,
+.lmd-root .print-light .luogu-code-block-wrapper .token.symbol{
+    color: #005cc5 !important;
+  }
+.lmd-root .print-light .luogu-code-block-wrapper .token.class-name,
+.lmd-root .print-light .luogu-code-block-wrapper .token.property,
+.lmd-root .print-light .luogu-code-block-wrapper .token.macro,
+.lmd-root .print-light .luogu-code-block-wrapper .token.directive-hash{
+    color: #a04100 !important;
+  }
+.lmd-root .print-light .luogu-code-block-wrapper .token.atrule,
+.lmd-root .print-light .luogu-code-block-wrapper .token.builtin,
+.lmd-root .print-light .luogu-code-block-wrapper .token.keyword,
+.lmd-root .print-light .luogu-code-block-wrapper .token.directive,
+.lmd-root .print-light .luogu-code-block-wrapper .token.selector,
+.lmd-root .print-light .luogu-code-block-wrapper .token.important{
+    /* #d73a49 is 4.30:1; nudged darker for AA. */
+    color: #b31d28 !important;
+  }
+.lmd-root .print-light .luogu-code-block-wrapper .token.string,
+.lmd-root .print-light .luogu-code-block-wrapper .token.attr-value,
+.lmd-root .print-light .luogu-code-block-wrapper .token.char,
+.lmd-root .print-light .luogu-code-block-wrapper .token.regex,
+.lmd-root .print-light .luogu-code-block-wrapper .token.variable{
+    color: #032f62 !important;
+  }
+.lmd-root .print-light .luogu-code-block-wrapper .token.operator,
+.lmd-root .print-light .luogu-code-block-wrapper .token.entity,
+.lmd-root .print-light .luogu-code-block-wrapper .token.url{
+    color: #b31d28 !important;
+  }
+.lmd-root .print-light .luogu-code-block-wrapper .token.inserted{
+    color: #22863a !important;
+  }
+.lmd-root .print-dark .luogu-table,
+.lmd-root .print-dark .luogu-tuack-table,
+.lmd-root .print-dark .luogu-three-table{
+    background: transparent !important;
+    color: #d4d4d4 !important;
+  }
+.lmd-root .print-dark .luogu-table th,
+.lmd-root .print-dark .luogu-table td{
+    border-color: #4b5563 !important;
+    color: #d4d4d4 !important;
+  }
+.lmd-root .print-dark .luogu-table tr:nth-child(even) td{
+    background: rgba(255, 255, 255, 0.04) !important;
+  }
+.lmd-root .print-dark .luogu-tuack-table th,
+.lmd-root .print-dark .luogu-three-table thead th{
+    background: transparent !important;
+    color: #f3f4f6 !important;
+  }
+.lmd-root .print-dark .luogu-tuack-table th,
+.lmd-root .print-dark .luogu-tuack-table td{
+    border-top-color: #9ca3af !important;
+    border-bottom-color: #9ca3af !important;
+  }
+.lmd-root .print-dark table.luogu-tuack-table[data-tuack-col] th,
+.lmd-root .print-dark table.luogu-tuack-table[data-tuack-col] td{
+    border-left-color: #d4d4d4 !important;
+  }
+.lmd-root .print-dark table.luogu-three-table th,
+.lmd-root .print-dark table.luogu-three-table td{
+    border-color: #d4d4d4 !important;
+  }
+.lmd-root .print-dark .luogu-code-block-wrapper{
+    color: #abb2bf !important;
+  }
+.lmd-root .print-dark body,
+.lmd-root .print-dark #app,
+.lmd-root .print-dark .main-workspace,
+.lmd-root .print-dark .preview-pane,
+.lmd-root .print-dark .preview-content{
+    background: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+  }
+.lmd-root .print-light .luogu-code-block-wrapper{
+    background: #f6f8fa !important;
+    color: #24292e !important;
+    border: 1px solid #d1d5da !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
+    margin: 14px 0 !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+.lmd-root .print-light .luogu-code-header{
+    background: #eaecef !important;
+    color: #444d56 !important;
+    border-bottom: 1px solid #d1d5da !important;
+    padding: 6px 12px !important;
+    font-size: 9pt !important;
+    display: flex !important;
+    justify-content: space-between !important;
+  }
+.lmd-root .luogu-code-pre,
+.lmd-root .luogu-code-pre code,
+.lmd-root .code-line,
+.lmd-root .code-line-text,
+.lmd-root pre,
+.lmd-root code{
+    white-space: pre-wrap !important;
+    word-break: break-all !important;
+    overflow-wrap: anywhere !important;
+  }
+.lmd-root .luogu-code-pre{
+    background: transparent !important;
+    color: #24292e !important;
+    padding: 8px 0 !important;
+    margin: 0 !important;
+    font-family: Consolas, "Courier New", monospace !important;
+    font-size: 9pt !important;
+    line-height: 1.45 !important;
+    overflow: visible !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+.lmd-root .luogu-code-pre code{
+    display: block !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+.lmd-root .code-line{
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: flex-start !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 14pt !important;
+    padding: 1px 6px !important;
+    box-sizing: border-box !important;
+  }
+.lmd-root .code-line-number{
+    display: inline-block !important;
+    width: 30px !important;
+    min-width: 30px !important;
+    max-width: 30px !important;
+    flex: 0 0 30px !important;
+    padding-right: 6px !important;
+    margin-right: 6px !important;
+    text-align: right !important;
+    user-select: none !important;
+    font-size: 8.5pt !important;
+    line-height: 1.45 !important;
+  }
+.lmd-root .code-line-number{
+    position: static !important;
+  }
+.lmd-root .print-light .code-line-number{
+    background: #f6f8fa !important;
+    /* #8c959f is 2.85:1 on this background; darkened to clear WCAG AA while staying
+       visibly subordinate to the code itself. */
+    color: #6e7781 !important;
+    border-right: 1px solid #d0d7de !important;
+  }
+.lmd-root .print-dark .code-line-number{
+    background: #282c34 !important;
+    color: #7f8896 !important;
+    border-right: 1px solid #3e4451 !important;
+  }
+.lmd-root .print-light .code-line-highlighted .code-line-number{
+    background: #fff8c5 !important;
+    color: #6a5b16 !important;
+  }
+.lmd-root .print-dark .code-line-highlighted .code-line-number{
+    background: linear-gradient(rgba(229, 192, 123, 0.15), rgba(229, 192, 123, 0.15)), #282c34 !important;
+  }
+.lmd-root .code-line-text{
+    display: block !important;
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    max-width: calc(100% - 36px) !important;
+    box-sizing: border-box !important;
+    font-size: 9pt !important;
+    line-height: 1.45 !important;
+  }
+.lmd-root .print-light .code-line-text{ color: #24292e !important; }
+.lmd-root .print-dark .code-line-text{ color: #abb2bf !important; }
+.lmd-root .print-light .code-line-highlighted,
+.lmd-root .print-dark .code-line-highlighted{
+    border-left: 3px solid #d4a72c !important;
+    padding-left: 3px !important;
+  }
+.lmd-root .print-light .code-line-highlighted{
+    background: #fff8c5 !important;
+  }
+.lmd-root .print-dark .code-line-highlighted{
+    background: linear-gradient(rgba(229, 192, 123, 0.15), rgba(229, 192, 123, 0.15)), #282c34 !important;
+  }
+.lmd-root .luogu-callout{
+    display: block !important;
+    box-shadow: none !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    margin: 12px 0 !important;
+    border: 1px solid #d0d7de !important;
+  }
+.lmd-root .luogu-callout > summary{
+    pointer-events: none !important;
+    list-style: none !important;
+    padding: 8px 12px !important;
+  }
+.lmd-root .luogu-callout > summary::-webkit-details-marker{
+    display: none !important;
+  }
+.lmd-root .luogu-callout-content{
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    height: auto !important;
+    max-height: none !important;
+    padding: 10px 14px !important;
+    border-top: 1px solid #d0d7de !important;
+  }
+.lmd-root .luogu-callout-arrow{
+    display: none !important;
+  }
+.lmd-root .luogu-bilibili-container{
+    display: block !important;
+    background: #f6f8fa !important;
+    border: 1px solid #d0d7de !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
+    margin: 12px 0 !important;
+    page-break-inside: avoid !important;
+  }
+.lmd-root .luogu-bilibili-header{
+    background: #f6f8fa !important;
+    color: #24292e !important;
+    padding: 8px 12px !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    border: none !important;
+  }
+.lmd-root .luogu-bilibili-badge{
+    background: #fb7299 !important;
+    color: #ffffff !important;
+    padding: 2px 6px !important;
+    border-radius: 4px !important;
+    font-size: 8.5pt !important;
+  }
+.lmd-root .luogu-bilibili-link{
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    color: #0969da !important;
+    font-size: 9pt !important;
+    text-decoration: underline !important;
+  }
+.lmd-root .luogu-bilibili-player-wrapper{
+    display: none !important;
+  }
+.lmd-root .luogu-math-display{
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+}
+/* ==========================================================================
+   Auto-save failure indicator
+   ========================================================================== */
+.lmd-root .save-failed{
+  color: #dc2626 !important;
+  font-weight: 600;
+}
+/* ==========================================================================
+   Responsive / mobile layout
+   --------------------------------------------------------------------------
+   The stylesheet previously contained no width breakpoints at all, so the
+   fixed two-column workspace and the 6px drag handle were unusable on a phone
+   — a real scenario for reading problems and touching up solutions on the go.
+   On narrow screens the panes stack and the existing view-mode classes
+   (.mode-editor-only / .mode-preview-only) become the primary way to switch.
+   ========================================================================== */
+@media  (max-width: 900px) {
+.lmd-root .main-workspace{
+    flex-direction: column;
+    height: auto;
+    min-height: calc(100vh - var(--header-height) - var(--toolbar-height) - var(--statusbar-height));
+  }
+.lmd-root .editor-pane,
+.lmd-root .preview-pane{
+    flex: 1 1 auto !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 50vh;
+  }
+.lmd-root .split-resizer{
+    display: none !important;
+  }
+.lmd-root .mode-editor-only .editor-pane,
+.lmd-root .mode-preview-only .preview-pane{
+    height: calc(100vh - var(--header-height) - var(--toolbar-height) - var(--statusbar-height));
+  }
+.lmd-root .toolbar-container{
+    flex-wrap: wrap;
+    height: auto;
+    row-gap: 4px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+.lmd-root .app-header{
+    height: auto;
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+}
+@media  (max-width: 600px) {
+.lmd-root .app-header{
+    padding: 4px 8px;
+  }
+.lmd-root .toolbar-container{
+    padding: 2px 6px;
+    row-gap: 2px;
+    column-gap: 2px;
+  }
+.lmd-root .toolbar-group{
+    gap: 2px;
+  }
+.lmd-root .editor-pane,
+.lmd-root .preview-pane{
+    height: 50vh;
+  }
+.lmd-root .toolbar-container button,
+.lmd-root .pane-header button{
+    min-width: 36px;
+    min-height: 36px;
+    padding: 4px 6px;
+  }
+.lmd-root .app-header .header-title-group{
+    flex: 1 1 100%;
+  }
+.lmd-root .toolbar-divider{
+    display: none;
+  }
+.lmd-root .luogu-table-wrapper{
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+/* Respect users who ask for reduced motion. */
+@media  (prefers-reduced-motion: reduce) {
+.lmd-root *,
+.lmd-root *::before,
+.lmd-root *::after{
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+/* A container name the renderer does not know (e.g. a typo like ":::s"). Shown as
+   literal text rather than being coerced into an info box, with a hint that it is
+   probably a mistake. */
+.lmd-root .luogu-unknown-container{
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  background: var(--bg-secondary);
+  border-left: 3px solid var(--border-color);
+  padding: 4px 10px;
+  border-radius: 4px;
+}
+.lmd-root .luogu-unclosed-warning{
+  color: #b26a00;
+  background: rgba(255, 170, 0, 0.1);
+  border-left: 3px solid #ffaa00;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 0.92em;
+}
+.lmd-root .luogu-unclosed-warning code{
+  background: rgba(0, 0, 0, 0.08);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+/* Typora mode: hide the element that has been swapped out for an editor.
+   This must come last in the stylesheet — `.luogu-code-pre code` is also
+   `display:block !important`, and between two !important declarations of equal
+   specificity the later one wins. */
+/* ::cute-table{three} — booktabs 三线表: only three horizontal rules (top, under the
+   header, bottom) and no vertical rules at all. Selectors are qualified with the
+   table class so they outrank the generic `.luogu-table th/td` borders. */
+.lmd-root table.luogu-three-table{
+  border-collapse: collapse;
+  border: 0 !important;
+  background: transparent;
+  box-shadow: none;
+}
+.lmd-root table.luogu-three-table th,
+.lmd-root table.luogu-three-table td{
+  border: 0 !important;
+  background: transparent !important;
+  padding: 8px 18px;
+  text-align: center;
+}
+.lmd-root table.luogu-three-table thead th{
+  border-top: 2px solid var(--text-primary) !important;
+  border-bottom: 1px solid var(--text-primary) !important;
+  font-weight: 600;
+}
+.lmd-root table.luogu-three-table tbody tr:last-child td{
+  border-bottom: 2px solid var(--text-primary) !important;
+}
+/* ::cute-table{tuack=N} — thicker divider on the left edge of column N, marking the
+   boundary between two logical halves of the table. */
+.lmd-root table.luogu-tuack-table[data-tuack-col="2"] th:nth-child(2),
+.lmd-root table.luogu-tuack-table[data-tuack-col="2"] td:nth-child(2),
+.lmd-root table.luogu-tuack-table[data-tuack-col="3"] th:nth-child(3),
+.lmd-root table.luogu-tuack-table[data-tuack-col="3"] td:nth-child(3),
+.lmd-root table.luogu-tuack-table[data-tuack-col="4"] th:nth-child(4),
+.lmd-root table.luogu-tuack-table[data-tuack-col="4"] td:nth-child(4),
+.lmd-root table.luogu-tuack-table[data-tuack-col="5"] th:nth-child(5),
+.lmd-root table.luogu-tuack-table[data-tuack-col="5"] td:nth-child(5),
+.lmd-root table.luogu-tuack-table[data-tuack-col="6"] th:nth-child(6),
+.lmd-root table.luogu-tuack-table[data-tuack-col="6"] td:nth-child(6),
+.lmd-root table.luogu-tuack-table[data-tuack-col="7"] th:nth-child(7),
+.lmd-root table.luogu-tuack-table[data-tuack-col="7"] td:nth-child(7),
+.lmd-root table.luogu-tuack-table[data-tuack-col="8"] th:nth-child(8),
+.lmd-root table.luogu-tuack-table[data-tuack-col="8"] td:nth-child(8){
+  border-left: 2.5px solid var(--text-primary) !important;
+}
+/* Merged-cell hover: the cell is temporarily un-merged, and the positions it had
+   swallowed come back as real cells showing their own source text. Dashed borders
+   and a tinted background mark them as a transient preview rather than content. */
+.lmd-root .preview-content.typora-mode td.typora-unmerged-origin,
+.lmd-root .preview-content.typora-mode th.typora-unmerged-origin{
+  outline: 2px solid var(--luogu-blue);
+  outline-offset: -2px;
+}
+.lmd-root .preview-content.typora-mode td.typora-unmerged-cell,
+.lmd-root .preview-content.typora-mode th.typora-unmerged-cell{
+  border: 1px dashed var(--luogu-blue) !important;
+  background: rgba(52, 152, 219, 0.08) !important;
+  color: var(--text-secondary);
+  font-family: var(--font-mono, monospace);
+  text-align: center;
+  /* The revealed markers are metadata, not prose: keep them from being selected or
+     dragged while the pointer is just passing over the table. */
+  user-select: none;
+}
+/* An editor pinned over the element it edits, leaving the document's own layout
+   untouched. A merged table cell cannot host an inline editor without the table
+   reflowing around it, so the cell editor floats instead. */
+.lmd-root .preview-content.typora-mode .typora-editing/* Cell-local editing: the marker text is replaced by the input inside the same <td>, so the un-merged skeleton around it keeps its own markers on screen. */ .preview-content.typora-mode td.typora-host-editing,
+.lmd-root .preview-content.typora-mode th.typora-host-editing{
+  padding: 0 !important;
+  /* Collapse the cell's own text nodes: the editor replaces the marker, so the
+     original glyph must not linger above the input. */
+  font-size: 0;
+  line-height: 0;
+}
+.lmd-root .preview-content.typora-mode .typora-host-editing .typora-editing{
+  display: block;
+  font-size: 13px;
+}
+.lmd-root .preview-content.typora-mode .typora-host-editing .typora-block-input{
+  width: 100%;
+  /* Ignore the textarea's `cols` intrinsic width so it cannot widen the column. */
+  min-inline-size: 0;
+  field-sizing: content;
+  /* No min-width in em: a wide editor forces the whole column wider and squeezes
+     the neighbouring marker cell down to nothing. The cell already reserves the
+     space it had before the edit. */
+  min-width: 0;
+  box-sizing: border-box;
+  border: 2px solid var(--luogu-blue, #3498db);
+  border-radius: 3px;
+  padding: 2px 4px;
+  text-align: center;
+  background: #fff;
+}
+.lmd-root .typora-overlay{
+  position: absolute;
+  z-index: 40;
+  margin: 0;
+  padding: 0;
+}
+.lmd-root .preview-content.typora-mode .typora-editing.typora-overlay .typora-block-input{
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 2px 6px;
+  border: 2px solid var(--luogu-blue);
+  border-radius: 3px;
+  background: var(--bg-primary);
+  text-align: center;
+  resize: none;
+}
+.lmd-root .preview-content .typora-hidden,
+.lmd-root .preview-content .typora-hidden code,
+.lmd-root .preview-content .typora-hidden pre{
+  display: none !important;
+}
+/* Callout type picker (Typora mode). Appended to <body> so it is never clipped by
+   the preview pane's overflow. */
+.lmd-root .typora-type-menu{
+  position: fixed;
+  z-index: 9999;
+  min-width: 128px;
+  padding: 4px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+}
+.lmd-root .typora-type-item{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.lmd-root .typora-type-item:hover{
+  background: var(--bg-secondary);
+}
+.lmd-root .typora-type-item.is-current{
+  font-weight: 600;
+}
+.lmd-root .typora-type-item.is-current::after{
+  content: "✓";
+  margin-left: auto;
+  color: var(--luogu-blue);
+}
+.lmd-root .typora-type-dot{
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: none;
+}
+/* Scroll-sync toggle: dim + strike through when off, so the state is readable at a
+   glance rather than only from the tooltip. */
+.lmd-root .tool-btn.scroll-sync-btn{ position: relative; }
+.lmd-root .tool-btn.scroll-sync-btn:not(.active){ opacity: .45; }
+.lmd-root .tool-btn.scroll-sync-btn:not(.active)::after{
+  content: "";
+  position: absolute;
+  left: 15%;
+  right: 15%;
+  top: 50%;
+  height: 2px;
+  background: currentColor;
+  transform: rotate(-45deg);
+  border-radius: 2px;
+}

@@ -88,7 +88,7 @@
       </div>
     </header>
 
-    <article class="post-content markdown-body mb-4">{{ post.content_html | safe }}</article>
+    {% include 'forum/_markdown.html' with markdown=post.content fallback_html=post.content_html extra_class='post-content mb-4' %}
   </article>
 
   <hr class="my-4" />
@@ -137,7 +137,7 @@
                 </div>
               {% endif %}
             </div>
-            <div class="comment-body markdown-body">{{ comment.content_html | safe }}</div>
+            {% include 'forum/_markdown.html' with markdown=comment.content fallback_html=comment.content_html extra_class='comment-body' %}
           </article>
         {% endfor %}
       </div>
