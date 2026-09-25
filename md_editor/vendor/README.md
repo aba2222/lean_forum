@@ -4,8 +4,23 @@
 用于支持洛谷扩展语法（`:::info` 折叠框、表格合并、Bilibili 嵌入等）与 KaTeX 公式的实时预览。
 
 - 上游版本：`1.23.1`
-- 上游许可证：MIT（见上游仓库 `LICENSE`）
+- 上游许可证：MIT
 - 本地化时间：见本目录文件的首次提交
+
+## 许可证与署名
+
+上游及所捆绑的第三方组件均为 **MIT**，其许可证全文随代码一起放在静态目录里，
+会随部署产物一并提供：
+
+| 文件 | 内容 |
+| --- | --- |
+| `static/md_editor/luogu/LICENSE` | 洛谷 Markdown 编辑器（Copyright (c) 2026 wudream813） |
+| `static/md_editor/luogu/THIRD-PARTY-NOTICES.md` | 本仓库实际收录了哪些文件、对应哪些许可 |
+| `static/md_editor/luogu/katex/LICENSE` | KaTeX（Copyright (c) 2013-2020 Khan Academy and other contributors） |
+| `static/md_editor/luogu/prism/LICENSE` | Prism（Copyright (c) 2012 Lea Verou） |
+
+Lean Forum 本身是 AGPL-3.0；这批 MIT 组件与它相互独立，MIT 允许被 AGPL 项目使用与再分发，
+前提是保留上述版权与许可声明 —— 所以这几个文件不要删。
 
 ---
 
