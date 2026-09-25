@@ -15,8 +15,8 @@
             {{ profile_user.date_joined|date:"Y-m-d" }} 加入 · {{ profile_user.date_joined|naturaltime }}
           </p>
 
-          {% if profile.content_html %}
-            <div class="markdown-body profile-bio text-start">{{ profile.content_html|safe }}</div>
+          {% if profile.content %}
+            {% include 'forum/_markdown.html' with markdown=profile.content fallback_html=profile.content_html extra_class='profile-bio text-start' %}
           {% else %}
             <p class="text-muted small mb-0">这位用户还没有填写个人简介。</p>
           {% endif %}
@@ -210,18 +210,13 @@
   </div>
 
   <style>
-    /* 简介复用 github-markdown-css，但在卡片里要去掉它的内边距和自带背景 */
-    .profile-bio.markdown-body {
-      padding: 0;
-      margin: 0;
-      min-width: 0;
-      max-width: none;
-      background-color: transparent;
+    /* 简介由洛谷解析器渲染，容器与边距收在卡片里；字体沿用站点正文大小 */
+    .profile-bio {
       font-size: 0.9rem;
       text-align: left;
     }
 
-    .profile-bio.markdown-body > *:last-child {
+    .profile-bio .preview-content > *:last-child {
       margin-bottom: 0;
     }
 
@@ -231,10 +226,6 @@
 
     .profile-comment-body {
       min-width: 0;
-    }
-
-    [data-bs-theme='dark'] .profile-bio.markdown-body {
-      background-color: transparent;
     }
   </style>
 {% endblock %}

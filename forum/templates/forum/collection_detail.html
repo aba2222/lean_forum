@@ -5,8 +5,8 @@
 
 {% block content %}
   <h1>{{ collection.name }}</h1>
-  {% if collection.content_html %}
-    <div class="markdown-body mb-3">{{ collection.content_html|safe }}</div>
+  {% if collection.content %}
+    {% include 'forum/_markdown.html' with markdown=collection.content fallback_html=collection.content_html extra_class='mb-3' %}
   {% endif %}
 
   <p class="text-muted d-flex align-items-center gap-2 flex-wrap">

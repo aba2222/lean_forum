@@ -1,0 +1,126 @@
+/**
+ * 洛谷编辑器 —— 已发布内容的正文样式
+ *
+ * 已发布内容复用编辑器的完整样式表（styles.scoped.css），这样「预览」和
+ * 「发布后」用的是同一份 CSS，排版不会有两套真相。但那份样式表是给整页应用
+ * 写的：容器被当成 html/body，带着 height:100% / overflow:hidden / 固定字号。
+ * 这里把整页应用的那几项收窄成「一段正文」。
+ *
+ * 所有选择器都带 .lmd-root.lmd-content，确保优先级压过 styles.scoped.css。
+ */
+
+.lmd-root.lmd-content {
+  --header-height: 0px;
+
+  display: block;
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+  resize: none;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+/* 正文不需要预览面板的内边距与独立滚动条，交给页面本身 */
+.lmd-root.lmd-content > .preview-content {
+  padding: 0;
+  margin: 0;
+  overflow: visible;
+  max-height: none;
+  background: transparent;
+}
+
+/* 预览面板里那些只服务于编辑器的装饰不落到正文上 */
+.lmd-root.lmd-content .preview-content > :first-child {
+  margin-top: 0;
+}
+
+.lmd-root.lmd-content .preview-content > :last-child {
+  margin-bottom: 0;
+}
+
+/* 阅读视图里的任务清单是只读的，别给出手可点的暗示 */
+.lmd-root.lmd-content .luogu-task-checkbox {
+  cursor: default;
+}
+
+.lmd-root.lmd-content .luogu-checkbox-label {
+  cursor: default;
+}
+
+/* B 站播放器替换掉门面按钮后需要占满宽度 */
+.lmd-root.lmd-content .luogu-bilibili-embed iframe,
+.lmd-root.lmd-content iframe[data-src] {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  border: 0;
+}
+
+/* @提及：在正文里要能一眼认出来，但不抢正文的注意力 */
+.lmd-root.lmd-content .luogu-mention {
+  padding: 0 3px;
+  border-radius: 4px;
+  text-decoration: none;
+  color: var(--luogu-blue, #3498db);
+  background: var(--luogu-blue-light, #ebf5fb);
+  font-weight: 500;
+}
+
+.lmd-root.lmd-content .luogu-mention:hover {
+  text-decoration: underline;
+}
+
+/* ---------------------------------------------------------------------------
+   服务端兜底样式
+   兜底内容是 markdown-it 的产物，用的是裸标签；而洛谷这套样式表主要靠
+   .luogu-* 类名驱动，只覆盖了标题与段落。这里补一套最小可读样式，
+   只挂在 .lmd-fallback 上 —— JS 渲染完成后该标记会被摘掉，
+   所以永远不会影响洛谷解析器的正式输出。
+   --------------------------------------------------------------------------- */
+
+.lmd-root.lmd-content .preview-content.lmd-fallback pre {
+  padding: 12px 14px;
+  margin: 12px 0;
+  overflow-x: auto;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+.lmd-root.lmd-content .preview-content.lmd-fallback code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  background: var(--bg-tertiary);
+  padding: 2px 5px;
+  border-radius: 4px;
+}
+
+.lmd-root.lmd-content .preview-content.lmd-fallback pre code {
+  padding: 0;
+  background: transparent;
+}
+
+.lmd-root.lmd-content .preview-content.lmd-fallback table {
+  width: 100%;
+  margin: 12px 0;
+  border-collapse: collapse;
+}
+
+.lmd-root.lmd-content .preview-content.lmd-fallback th,
+.lmd-root.lmd-content .preview-content.lmd-fallback td {
+  padding: 6px 10px;
+  border: 1px solid var(--border-color);
+}
+
+.lmd-root.lmd-content .preview-content.lmd-fallback blockquote {
+  margin: 12px 0;
+  padding-left: 12px;
+  color: var(--text-secondary);
+  border-left: 3px solid var(--border-color);
+}
+
+.lmd-root.lmd-content .preview-content.lmd-fallback img {
+  max-width: 100%;
+}

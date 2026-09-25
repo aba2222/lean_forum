@@ -1,5 +1,14 @@
 from django.contrib import admin
-from .models import Item, Rating, Post, Comment, Collection, CollectionPost, Profile
+from .models import (
+    Item,
+    Rating,
+    Post,
+    Comment,
+    Collection,
+    CollectionPost,
+    Profile,
+    Notification,
+)
 
 # Register your models here.
 
@@ -20,3 +29,12 @@ class ProfileAdmin(admin.ModelAdmin):
     @admin.display(description='已设置头像', boolean=True)
     def has_avatar(self, obj):
         return bool(obj.avatar)
+
+
+@admin.register(Notification)
+class NotificationAdmin(admin.ModelAdmin):
+    list_display = ('recipient', 'actor', 'kind', 'post', 'is_read', 'created_at')
+    list_filter = ('kind', 'is_read')
+    search_fields = ('recipient__username', 'actor__username')
+    readonly_fields = ('created_at',)
+    date_hierarchy = 'created_at'

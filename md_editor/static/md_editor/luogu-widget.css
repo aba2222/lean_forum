@@ -1,0 +1,97 @@
+/**
+ * 洛谷编辑器 —— 宿主页面集成样式
+ *
+ * 上游样式表（styles.scoped.css）是给整页应用写的，尺寸按 100vw/100vh 算。
+ * 这里只做「把整页应用塞进表单里的一个盒子」所需的覆盖，
+ * 全部选择器都带 .lmd-root.lmd-widget 两个类以保证优先级压过上游。
+ */
+
+.lmd-root.lmd-widget {
+  /* 顶栏在论坛里被移除了，工作区高度不能再减一个 --header-height */
+  --header-height: 0px;
+
+  position: relative;
+  display: block;
+  height: 620px;
+  min-height: 320px;
+  max-width: 100%;
+  overflow: hidden;
+  resize: vertical;
+  border: 1px solid var(--border-color, #e9ecef);
+  border-radius: 0.5rem;
+  background: var(--bg-primary, #fff);
+}
+
+/* 评论框等位置用紧凑高度 */
+.lmd-root.lmd-widget[data-lmd-compact] {
+  height: 430px;
+}
+
+/* 整页应用 -> 撑满容器 */
+.lmd-root.lmd-widget > #app {
+  width: 100%;
+  height: 100%;
+}
+
+.lmd-root.lmd-widget .main-workspace {
+  height: auto;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+/* 资源没加载出来时的兜底：至少还能当普通文本框写 */
+.lmd-root.lmd-widget.lmd-widget-broken {
+  height: auto;
+  min-height: 0;
+  resize: none;
+  overflow: visible;
+  border: 0;
+  background: transparent;
+}
+
+/* 图片上传区：上游没有这个区块，样式跟着表单控件走 */
+.lmd-root.lmd-widget .lmd-upload-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary, #6c757d);
+}
+
+/* 把图片拖进编辑区时的提示层（由 luogu-widget.js 的 dragenter/drop 切换这个类） */
+.lmd-root.lmd-widget.lmd-drop-active::after {
+  content: '松开即可上传图片';
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  pointer-events: none;
+  color: var(--luogu-blue, #3498db);
+  background: rgba(52, 152, 219, 0.08);
+  border: 2px dashed var(--luogu-blue, #3498db);
+  border-radius: inherit;
+}
+
+/* 编辑器里的链接/按钮沿用站点主色，避免和论坛其它控件割裂 */
+.lmd-root.lmd-widget .tool-btn:focus-visible,
+.lmd-root.lmd-widget .btn:focus-visible,
+.lmd-root.lmd-widget .form-input:focus-visible {
+  outline: 2px solid var(--border-focus, #3498db);
+  outline-offset: 1px;
+}
+
+/* 窄屏下把双栏堆叠的阈值调低一点，论坛正文区本来就不宽 */
+@media (max-width: 992px) {
+  .lmd-root.lmd-widget {
+    height: 520px;
+  }
+}
+
+@media (max-width: 576px) {
+  .lmd-root.lmd-widget {
+    height: 460px;
+  }
+}

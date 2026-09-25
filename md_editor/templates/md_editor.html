@@ -1,13 +1,689 @@
 {% load static %}
+{% comment %}
+  由 md_editor/vendor/build_widget_template.py 从上游 index.html 生成，请勿手改。
+  行为改动请写在 luogu-widget.js / luogu-widget.css，或改生成器后重跑。
 
-<div id="{{ id }}">
-  <div
-    class="md_editor"
-    data-name="{{ name }}"
-    data-value="{{ value }}"
-    data-image-upload-to="{% url 'upload_view' %}"
-  ></div>
+  注意：上游编辑器用全局 id 取元素（#editorTextarea / #previewContent / 各弹窗），
+  所以每页只能挂载一个实例。同一页面要放第二个编辑器时需要先改造上游脚本。
+{% endcomment %}
+<link rel="stylesheet" href="{% static 'md_editor/luogu-widget.css' %}" />
+<div
+  class="lmd-root lmd-widget"
+  data-lmd-editor
+  data-lmd-static-base="{% static 'md_editor/luogu/' %}"
+  data-image-upload-to="{% url 'upload_view' %}"
+  {% if compact %}data-lmd-compact{% endif %}
+  {{ final_attrs }}
+>
+<div id="app">
+  <!-- Top Navigation Header / Titlebar -->
+  
 
-  <script type="module" src="{% static 'md_editor/index.js' %}"></script>
-  <link rel="stylesheet" href="{% static 'md_editor/index.css' %}" />
+  <!-- Formatting Toolbar -->
+  <div class="toolbar-container" role="toolbar" aria-label="编辑器工具栏">
+    <!-- History -->
+    <div class="toolbar-group">
+      <button class="tool-btn" onclick="LuoguEditor.undo()"  title="撤销 (Ctrl+Z)" aria-label="撤销 (Ctrl+Z)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+      </button>
+      <button class="tool-btn" onclick="LuoguEditor.redo()"  title="重做 (Ctrl+Y)" aria-label="重做 (Ctrl+Y)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/></svg>
+      </button>
+    </div>
+
+    <div class="toolbar-divider"></div>
+
+    <!-- Headings -->
+    <div class="toolbar-group">
+      <div class="tool-dropdown">
+        <button class="tool-btn"  title="标题" aria-label="标题">
+          <span style="font-weight: bold; font-size: 13px;">H</span>
+          <svg viewBox="0 0 24 24" style="width:8px;height:8px;" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="dropdown-menu">
+          <button class="dropdown-item" onclick="LuoguEditor.insertHeading(1)">H1 一级标题</button>
+          <button class="dropdown-item" onclick="LuoguEditor.insertHeading(2)">H2 二级标题</button>
+          <button class="dropdown-item" onclick="LuoguEditor.insertHeading(3)">H3 三级标题</button>
+          <button class="dropdown-item" onclick="LuoguEditor.insertHeading(4)">H4 四级标题</button>
+          <button class="dropdown-item" onclick="LuoguEditor.insertHeading(5)">H5 五级标题</button>
+          <button class="dropdown-item" onclick="LuoguEditor.insertHeading(6)">H6 六级标题</button>
+        </div>
+      </div>
+      <button class="tool-btn" onclick="LuoguEditor.insertBold()"  title="加粗 (Ctrl+B)" aria-label="加粗 (Ctrl+B)">
+        <strong style="font-size: 14px;">B</strong>
+      </button>
+      <button class="tool-btn" onclick="LuoguEditor.insertItalic()"  title="斜体 (Ctrl+I)" aria-label="斜体 (Ctrl+I)">
+        <em style="font-size: 14px; font-style: italic;">I</em>
+      </button>
+      <button class="tool-btn" onclick="LuoguEditor.insertStrikethrough()"  title="删除线 (Ctrl+D)" aria-label="删除线 (Ctrl+D)">
+        <s style="font-size: 14px;">S</s>
+      </button>
+    </div>
+
+    <div class="toolbar-divider"></div>
+
+    <!-- Code & Quote -->
+    <div class="toolbar-group">
+      <button class="tool-btn" onclick="LuoguEditor.insertInlineCode()"  title="行内代码 `code`" aria-label="行内代码 `code`">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+      </button>
+      <button class="tool-btn" onclick="LuoguEditor.openModal('codeModal')"  title="插入洛谷代码块 (支持行号与行高亮)" aria-label="插入洛谷代码块 (支持行号与行高亮)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>
+      </button>
+      <button class="tool-btn" onclick="LuoguEditor.insertQuote()"  title="引用区块 (Ctrl+Shift+Q)" aria-label="引用区块 (Ctrl+Shift+Q)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      </button>
+    </div>
+
+    <div class="toolbar-divider"></div>
+
+    <!-- KaTeX Formulas -->
+    <div class="toolbar-group">
+      <button class="tool-btn" onclick="LuoguEditor.insertMathInline()"  title="行内数学公式 $x$ (Ctrl+M)" aria-label="行内数学公式 $x$ (Ctrl+M)">
+        <span style="font-family: serif; font-size: 14px; font-weight: bold;">$</span>
+      </button>
+      <button class="tool-btn" onclick="LuoguEditor.insertMathBlock()"  title="独立成行公式 $$ (Ctrl+Shift+M)" aria-label="独立成行公式 $$ (Ctrl+Shift+M)">
+        <span style="font-family: serif; font-size: 13px; font-weight: bold;">$$</span>
+      </button>
+      <button class="tool-btn" onclick="LuoguEditor.openModal('mathModal')"  title="📐 LaTeX 数学公式面板与速查助手" aria-label="📐 LaTeX 数学公式面板与速查助手">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      </button>
+    </div>
+
+    <div class="toolbar-divider"></div>
+
+    <!-- Luogu Special Syntax: Callouts, Epigraph, Align, Table, Bilibili -->
+    <div class="toolbar-group">
+      <div class="tool-dropdown">
+        <button class="tool-btn"  title="洛谷折叠框 (info, success, warning, error)" aria-label="洛谷折叠框 (info, success, warning, error)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+          <svg viewBox="0 0 24 24" style="width:8px;height:8px;" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="dropdown-menu">
+          <button class="dropdown-item" onclick="LuoguEditor.insertCallout('info', '提示信息', false)">📘 :::info 提示框</button>
+          <button class="dropdown-item" onclick="LuoguEditor.insertCallout('info', '默认展开提示', true)">📖 :::info 提示框 {open}</button>
+          <button class="dropdown-item" onclick="LuoguEditor.insertCallout('success', '解题成功', false)">📗 :::success 成功框</button>
+          <button class="dropdown-item" onclick="LuoguEditor.insertCallout('warning', '警告注意', false)">📙 :::warning 警告框</button>
+          <button class="dropdown-item" onclick="LuoguEditor.insertCallout('error', '常见错误', false)">📕 :::error 错误框</button>
+          <button class="dropdown-item" onclick="LuoguEditor.openModal('calloutModal')">⚙️ 自定义折叠框 (支持公式标题与嵌套)</button>
+        </div>
+      </div>
+
+      <button class="tool-btn" onclick="LuoguEditor.initTableBuilder(3, 4)"  title="表格生成器 (支持 ^ 和 < 单元格合并与 Tuack 风格)" aria-label="表格生成器 (支持 ^ 和 < 单元格合并与 Tuack 风格)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
+      </button>
+
+      <button class="tool-btn" onclick="LuoguEditor.openModal('epigraphModal')"  title="引言 :::epigraph[落款]" aria-label="引言 :::epigraph[落款]">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/></svg>
+      </button>
+
+      <div class="tool-dropdown">
+        <button class="tool-btn"  title="居中与居右排版 :::align" aria-label="居中与居右排版 :::align">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="10" x2="6" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="18" y1="18" x2="6" y2="18"/></svg>
+          <svg viewBox="0 0 24 24" style="width:8px;height:8px;" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="dropdown-menu">
+          <button class="dropdown-item" onclick="LuoguEditor.insertAlign('center')">↔️ :::align{center} 居中排版</button>
+          <button class="dropdown-item" onclick="LuoguEditor.insertAlign('right')">➡️ :::align{right} 居右排版</button>
+        </div>
+      </div>
+
+      <button class="tool-btn" onclick="LuoguEditor.openModal('bilibiliModal')"  title="插入 Bilibili 视频 ![](bilibili:...)" aria-label="插入 Bilibili 视频 ![](bilibili:...)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="10.5" y2="5"/><line x1="17" y1="2" x2="13.5" y2="5"/><circle cx="8" cy="11" r="1"/><circle cx="16" cy="11" r="1"/><path d="M9 16c1.5 1 4.5 1 6 0"/></svg>
+      </button>
+    </div>
+
+    <div class="toolbar-divider"></div>
+
+    <!-- Common Inserts: Link, Image, Task list, HR -->
+    <div class="toolbar-group">
+      <button class="tool-btn" onclick="LuoguEditor.openModal('linkModal')"  title="插入链接 [标题](URL)" aria-label="插入链接 [标题](URL)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+      </button>
+      <button class="tool-btn" onclick="LuoguEditor.openModal('imageModal')"  title="插入图片 ![alt](URL)" aria-label="插入图片 ![alt](URL)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      </button>
+      <button class="tool-btn" onclick="LuoguEditor.insertUnorderedList()"  title="无序列表 (Ctrl+Shift+7)" aria-label="无序列表">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3.5" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="3.5" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="3.5" cy="18" r="1.5" fill="currentColor" stroke="none"/></svg>
+      </button>
+      <button class="tool-btn" onclick="LuoguEditor.insertOrderedList()"  title="有序列表 (Ctrl+Shift+8)" aria-label="有序列表">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><path d="M3 4h1v4" stroke-width="1.6"/><path d="M2.6 14.2c0-.7.6-1.2 1.3-1.2s1.2.5 1.2 1.1c0 1.1-2.5 1.5-2.5 2.9h2.6" stroke-width="1.6"/></svg>
+      </button>
+      <button class="tool-btn" onclick="LuoguEditor.insertTaskList()"  title="任务列表 - [ ] (Ctrl+Shift+9)" aria-label="任务列表 - [ ]">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      </button>
+      <button class="tool-btn" onclick="LuoguEditor.insertHR()"  title="分割线 ---" aria-label="分割线 ---">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/></svg>
+      </button>
+    </div>
+
+    <div class="toolbar-divider"></div>
+
+    <!-- Templates & Spacing Auto-fixer -->
+    <div class="toolbar-group">
+      <div class="tool-dropdown">
+        <button class="tool-btn"  title="洛谷官方标准格式模板" aria-label="洛谷官方标准格式模板">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          <span style="font-size:11px; margin-left:3px; font-weight:600;">模板</span>
+          <svg viewBox="0 0 24 24" style="width:8px;height:8px;" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="dropdown-menu">
+          <button class="dropdown-item" onclick="LuoguEditor.insertTemplate('demo')">🌟 洛谷语法全特性演示文档</button>
+          <button class="dropdown-item" onclick="LuoguEditor.insertTemplate('solution')">🏆 洛谷标准题解模板 (符合审核规范)</button>
+          <button class="dropdown-item" onclick="LuoguEditor.insertTemplate('problem')">📝 洛谷题目题面模板 (含Tuack数据范围)</button>
+          <button class="dropdown-item" onclick="LuoguEditor.insertTemplate('article')">📚 洛谷学术/文章专栏模板</button>
+        </div>
+      </div>
+
+      <button class="btn btn-icon-only" onclick="LuoguEditor.autoFixSpacing()"  title="⚡ 一键洛谷排版规范修复 (自动修复中英文、数字与公式间空格)" aria-label="⚡ 一键洛谷排版规范修复 (自动修复中英文、数字与公式间空格)">
+        <span style="color: var(--luogu-blue); font-weight: bold; font-size: 11px;">洛谷排版修复</span>
+      </button>
+    </div>
+
+    <!-- Right-aligned View Mode Switchers -->
+    <div style="margin-left: auto; display: flex; align-items: center; gap: 2px;">
+      <button class="tool-btn scroll-sync-btn active" id="scrollSyncBtn"
+        onclick="LuoguEditor.toggleScrollSync()"
+        title="滚动同步：开" aria-label="滚动同步" aria-pressed="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M16 3h3a2 2 0 0 1 2 2v3"/><path d="M8 21H5a2 2 0 0 1-2-2v-3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/><path d="M12 8v8"/><polyline points="9 11 12 8 15 11"/><polyline points="9 13 12 16 15 13"/></svg>
+      </button>
+      <div class="toolbar-divider"></div>
+      <button class="tool-btn view-mode-btn active" data-mode="split" onclick="LuoguEditor.setViewMode('split')"  title="双栏实时对比预览" aria-label="双栏实时对比预览">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
+      </button>
+      <button class="tool-btn view-mode-btn" data-mode="editor-only" onclick="LuoguEditor.setViewMode('editor-only')"  title="纯编辑专注模式" aria-label="纯编辑专注模式">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+      </button>
+      <button class="tool-btn view-mode-btn" data-mode="preview-only" onclick="LuoguEditor.setViewMode('preview-only')"  title="纯预览阅读模式" aria-label="纯预览阅读模式">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+      <button class="tool-btn view-mode-btn" data-mode="typora" onclick="LuoguEditor.setViewMode('typora')"  title="Typora 模式 (所见即所得，点击段落就地编辑)" aria-label="Typora 模式 (所见即所得，点击段落就地编辑)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Workspace -->
+  <main id="mainWorkspace" class="main-workspace mode-split">
+    <!-- Editor Pane -->
+    <div id="editorPane" class="editor-pane">
+      <div class="pane-header">
+        <span>MARKDOWN 源代码</span>
+        <span style="font-size:10px; font-weight:normal; color:var(--text-muted);">支持洛谷扩展语法 & KaTeX</span>
+      </div>
+      <div class="editor-wrapper">
+        <div class="gutter-stack">
+          <div id="lineNumbersGutter" class="line-numbers-gutter"></div>
+        </div>
+        <textarea id="editorTextarea" name="{{ name }}" class="editor-textarea" placeholder="在此输入 Markdown 内容，右侧将实时渲染……" spellcheck="false">{{ value }}</textarea>
+      </div>
+    </div>
+
+    <!-- Draggable Resizer -->
+    <div id="splitResizer" class="split-resizer" title="拖动调整双栏宽度"></div>
+
+    <!-- Preview Pane -->
+    <div id="previewPane" class="preview-pane">
+      <div class="pane-header">
+        <span>实时渲染预览 (所见即所得)</span>
+        <span id="currentThemeLabel" style="font-size:10px; font-weight:normal; color:var(--luogu-blue);">洛谷官方样式</span>
+      </div>
+      <div id="previewContent" class="preview-content"></div>
+    </div>
+  </main>
+
+  <!-- Bottom Status Bar -->
+  <footer class="app-statusbar">
+    <div class="status-left">
+      <div class="status-item">
+        <span class="status-dot"></span>
+        <span id="saveStatusIndicator" role="status" aria-live="polite">尚未保存</span>
+      </div>
+      <div class="status-item">
+        <span id="docStatsText">0 行 | 0 字 | 0 公式</span>
+      </div>
+    </div>
+    <div class="status-right">
+      <div class="status-item">
+        <span id="linterScoreBadge" class="status-score-badge status-score-good" onclick="LuoguEditor.openModal('linterModal')" style="cursor:pointer;" title="点击查看排版规范报告">排版评分: 100分</span>
+      </div>
+      <div class="status-item">
+        <span style="cursor:pointer;" onclick="LuoguEditor.openModal('helpModal')">❓ 帮助手册</span>
+      </div>
+    </div>
+  </footer>
 </div>
+<!-- 1. KaTeX Math Cheatsheet Modal -->
+<div id="mathModal" class="modal-overlay">
+  <div class="modal-dialog modal-dialog-large">
+    <div class="modal-header">
+      <h3 class="modal-title">📐 LaTeX / KaTeX 数学公式面板与速查助手</h3>
+      <button class="modal-close-btn" onclick="LuoguEditor.closeModal('mathModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="mathTabsContainer" class="math-tabs"></div>
+      <div id="mathCheatsheetContainer"></div>
+    </div>
+    <div class="modal-footer">
+      <span style="font-size: 11px; color: var(--text-muted); margin-right: auto;">点击任意公式项即可直接插入光标所在位置</span>
+      <button class="btn" onclick="LuoguEditor.closeModal('mathModal')">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- 2. Table Builder Modal -->
+<div id="tableModal" class="modal-overlay">
+  <div class="modal-dialog modal-dialog-large">
+    <div class="modal-header">
+      <h3 class="modal-title">📊 洛谷可视化表格生成器 (支持单元格合并与 Tuack)</h3>
+      <button class="modal-close-btn" onclick="LuoguEditor.closeModal('tableModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <div style="display:flex; gap:8px;">
+          <button class="btn" type="button" onclick="LuoguEditor.addTableRow()">➕ 添加一行</button>
+          <button class="btn" type="button" onclick="LuoguEditor.addTableCol()">➕ 添加一列</button>
+        </div>
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:12px; font-weight:600; color:var(--luogu-blue);">
+          <input type="checkbox" id="tableTuackCheck" checked />
+          启用 Tuack 竞赛风格 (::cute-table{tuack})
+        </label>
+      </div>
+      
+      <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">
+        提示：点击单元格下方的 <code>^</code> 可将其向上合并（rowspan），点击 <code>&lt;</code> 可将其向左合并（colspan）。
+      </p>
+
+      <div id="tableBuilderGrid" class="table-builder-grid-preview"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="LuoguEditor.closeModal('tableModal')">取消</button>
+      <button class="btn btn-primary" onclick="LuoguEditor.buildAndInsertTable()">生成并插入表格</button>
+    </div>
+  </div>
+</div>
+
+<!-- 3. Callout / Container Modal -->
+<div id="calloutModal" class="modal-overlay">
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <h3 class="modal-title">📦 插入洛谷折叠框与容器</h3>
+      <button class="modal-close-btn" onclick="LuoguEditor.closeModal('calloutModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">折叠框类型</label>
+        <select id="calloutTypeSelect" class="form-select">
+          <option value="info">📘 info 提示框</option>
+          <option value="success">📗 success 成功框</option>
+          <option value="warning">📙 warning 警告框</option>
+          <option value="error">📕 error 错误框</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">标题 (支持 LaTeX 公式，如 $\sum_{i=1}^n a_i$)</label>
+        <input type="text" id="calloutTitleInput" class="form-input" placeholder="例如：核心算法证明 $\mathcal{O}(n \log n)$" />
+      </div>
+
+      <div class="form-group">
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:12px;">
+          <input type="checkbox" id="calloutOpenCheck" />
+          <span>默认展开 ({open})</span>
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="LuoguEditor.closeModal('calloutModal')">取消</button>
+      <button class="btn btn-primary" onclick="
+        const type = document.getElementById('calloutTypeSelect').value;
+        const title = document.getElementById('calloutTitleInput').value;
+        const isOpen = document.getElementById('calloutOpenCheck').checked;
+        LuoguEditor.insertCallout(type, title, isOpen);
+        LuoguEditor.closeModal('calloutModal');
+      ">插入</button>
+    </div>
+  </div>
+</div>
+
+<!-- 4. Epigraph Modal -->
+<div id="epigraphModal" class="modal-overlay">
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <h3 class="modal-title">📜 插入引言 (:::epigraph)</h3>
+      <button class="modal-close-btn" onclick="LuoguEditor.closeModal('epigraphModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">引言落款 / 作者</label>
+        <input type="text" id="epigraphAuthorInput" class="form-input" placeholder="例如：高德纳 / 《算法导论》" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">引言内容</label>
+        <textarea id="epigraphContentInput" class="form-input" rows="3" placeholder="例如：过早的优化是万恶之源。"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="LuoguEditor.closeModal('epigraphModal')">取消</button>
+      <button class="btn btn-primary" onclick="
+        const author = document.getElementById('epigraphAuthorInput').value;
+        const content = document.getElementById('epigraphContentInput').value;
+        LuoguEditor.insertEpigraph(author, content);
+        LuoguEditor.closeModal('epigraphModal');
+      ">插入引言</button>
+    </div>
+  </div>
+</div>
+
+<!-- 5. Bilibili Modal -->
+<div id="bilibiliModal" class="modal-overlay">
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <h3 class="modal-title">📺 插入 Bilibili 视频播放器</h3>
+      <button class="modal-close-btn" onclick="LuoguEditor.closeModal('bilibiliModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">BV号 / AV号 或 纯数字</label>
+        <input type="text" id="bilibiliIdInput" class="form-input" placeholder="例如：BV1GJ411x7h7 或 av53851218" />
+        <div class="form-hint">支持 BV号、AV号，或带参数如 <code>BV1bv411p7U5?page=4&t=82</code></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="LuoguEditor.closeModal('bilibiliModal')">取消</button>
+      <button class="btn btn-primary" onclick="
+        const id = document.getElementById('bilibiliIdInput').value.trim();
+        if (id) {
+          LuoguEditor.insertBilibili(id);
+          LuoguEditor.closeModal('bilibiliModal');
+        }
+      ">插入视频</button>
+    </div>
+  </div>
+</div>
+
+<!-- 6. Code Block Modal -->
+<div id="codeModal" class="modal-overlay">
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <h3 class="modal-title">💻 插入代码块 (带行号与高亮)</h3>
+      <button class="modal-close-btn" onclick="LuoguEditor.closeModal('codeModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">编程语言</label>
+        <select id="codeLangSelect" class="form-select">
+          <option value="cpp">C++ (cpp) - 洛谷默认</option>
+          <option value="c">C</option>
+          <option value="python">Python (py)</option>
+          <option value="java">Java</option>
+          <option value="pascal">Pascal</option>
+          <option value="rust">Rust</option>
+          <option value="go">Go</option>
+          <option value="plain">纯文本 (plain / text)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:12px;">
+          <input type="checkbox" id="codeLineNumbersCheck" checked />
+          <span>显示行号 (line-numbers)</span>
+        </label>
+      </div>
+      <div class="form-group">
+        <label class="form-label">指定高亮行范围 (可选)</label>
+        <input type="text" id="codeLinesInput" class="form-input" placeholder="例如：5-6 或 3,5,8-10" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="LuoguEditor.closeModal('codeModal')">取消</button>
+      <button class="btn btn-primary" onclick="
+        const lang = document.getElementById('codeLangSelect').value;
+        const hasLn = document.getElementById('codeLineNumbersCheck').checked;
+        const lines = document.getElementById('codeLinesInput').value.trim();
+        let args = lang;
+        if (hasLn) args += ' line-numbers';
+        if (lines) args += ` lines=${lines}`;
+        LuoguEditor.insertAtCursor(`\n\n\`\`\`${args}\n// 在此编写代码\n\`\`\`\n\n`);
+        LuoguEditor.closeModal('codeModal');
+      ">插入代码块</button>
+    </div>
+  </div>
+</div>
+
+<!-- 7. Link Modal -->
+<div id="linkModal" class="modal-overlay">
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <h3 class="modal-title">🔗 插入超链接</h3>
+      <button class="modal-close-btn" onclick="LuoguEditor.closeModal('linkModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">链接标题</label>
+        <input type="text" id="linkTextInput" class="form-input" placeholder="例如：洛谷帮助中心" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">链接 URL</label>
+        <input type="text" id="linkUrlInput" class="form-input" placeholder="https://www.luogu.com.cn/" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="LuoguEditor.closeModal('linkModal')">取消</button>
+      <button class="btn btn-primary" onclick="
+        const text = document.getElementById('linkTextInput').value.trim() || '链接';
+        const url = document.getElementById('linkUrlInput').value.trim() || 'https://';
+        LuoguEditor.insertAtCursor(`[${text}](${url})`);
+        LuoguEditor.closeModal('linkModal');
+      ">插入链接</button>
+    </div>
+  </div>
+</div>
+
+<!-- 8. Image Modal（改造：可直接上传到论坛，也可填外链） -->
+<div id="imageModal" class="modal-overlay">
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <h3 class="modal-title">🖼️ 插入图片</h3>
+      <button class="modal-close-btn" onclick="LuoguEditor.closeModal('imageModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">图片描述 (Alt)</label>
+        <input type="text" id="imageAltInput" class="form-input" placeholder="例如：算法示意图" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">从本地上传</label>
+        <input type="file" id="imageFileInput" class="form-input" accept="image/png,image/jpeg,image/webp" />
+        <div class="lmd-upload-hint" id="imageUploadHint">
+          支持 JPG / PNG / WebP，单张不超过 10 MB；上传完成后会自动插入到光标处。
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">或填写图片 URL / 洛谷图床地址</label>
+        <input type="text" id="imageUrlInput" class="form-input" placeholder="https://cdn.luogu.com.cn/upload/image_hosting/..." />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="LuoguEditor.closeModal('imageModal')">取消</button>
+      <button class="btn btn-primary" onclick="LMDWidget.insertImageUrl()">插入图片</button>
+    </div>
+  </div>
+</div>
+
+<!-- 9. Luogu Formatting Diagnostic Modal -->
+<div id="linterModal" class="modal-overlay">
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <h3 class="modal-title">🛡️ 洛谷排版规范检查报告</h3>
+      <button class="modal-close-btn" onclick="LuoguEditor.closeModal('linterModal')">&times;</button>
+    </div>
+    <div class="modal-body" id="linterReportBody">
+      <p>正在分析文档排版规范……</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-success" onclick="LuoguEditor.autoFixSpacing(); LuoguEditor.closeModal('linterModal');">⚡ 一键修复排版规范</button>
+      <button class="btn" onclick="LuoguEditor.closeModal('linterModal')">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- 10. Help & Handbook Modal -->
+<div id="helpModal" class="modal-overlay">
+  <div class="modal-dialog modal-dialog-large">
+    <div class="modal-header">
+      <h3 class="modal-title">📖 洛谷官方题解规范与 Markdown / LaTeX 速查手册</h3>
+      <button class="modal-close-btn" onclick="LuoguEditor.closeModal('helpModal')">&times;</button>
+    </div>
+    <div class="modal-body" style="font-size: 13px; line-height: 1.75;">
+      
+      <!-- Section 1: 洛谷主题库题解规范 -->
+      <h4 style="color:var(--luogu-blue); display:flex; align-items:center; gap:6px;">
+        🛡️ 《洛谷主题库题解规范》与《专栏推荐规范》完整细则（审核必读）：
+      </h4>
+      <div style="background:var(--bg-secondary); border-left:4px solid var(--luogu-blue); padding:12px 16px; border-radius:0 6px 6px 0; margin:10px 0 16px;">
+        <ul style="padding-left:18px; margin:0; display:flex; flex-direction:column; gap:8px;">
+          <li>
+            <strong>1. 基本标点与空格规范</strong>：
+            <ul style="padding-left:18px; margin-top:4px;">
+              <li>正确使用<strong>全角中文标点</strong>，句末必须有标点符号（特别地，句末要有<strong>句号 <code>。</code></strong>）。</li>
+              <li><strong>中文汉字</strong> 与 <strong>英文单词、数字或 LaTeX 公式</strong> 之间必须以<strong>半角空格</strong>隔开（如 <code>设 $n$ 为正整数</code>、<code>前 10 个元素</code>、<code>使用 C++ 语言</code>）。</li>
+              <li><strong>中文标点符号</strong> 与 <strong>英文、数字或公式</strong> 之间<strong>【严格严禁有空格】</strong>（如 <code>$n \le 10^5$，</code> 正确，<code>$n \le 10^5$ ，</code> 违规）。</li>
+            </ul>
+          </li>
+
+          <li>
+            <strong>2. 数学公式与 LaTeX 规范</strong>：
+            <ul style="padding-left:18px; margin-top:4px;">
+              <li>数学公式（变量字母如 $i, j, n$、运算式、大 $\mathcal{O}$ 复杂度）<strong>必须使用 LaTeX</strong>；非数学公式（英文单词、算法名如 DFS/BFS、题目名）<strong>不应使用 LaTeX</strong>。</li>
+              <li><strong>同一个数学公式必须写在同一个 LaTeX 环境内</strong>，严禁将一个公式拆分成多个独立的 <code>$</code> 碎拼（如 <code>$a$ + $b$ = $c$</code> 违规，应为 <code>$a + b = c$</code>）。</li>
+              <li><strong>数学语言而非代码语言</strong>：
+                <br />• 比较符号：必须用 $\le$ (<code>\le</code>)、$\ge$ (<code>\ge</code>)、$\ne$ (<code>\ne</code>)，严禁使用 <code><=, >=, !=, ==</code>。
+                <br />• 乘法符号：必须用 $\times$ (<code>\times</code>) 或 $\cdot$ (<code>\cdot</code>)，严禁在正文中用 <code>*</code> 代替乘号。
+                <br />• 赋值与推导：赋值用 $\gets$ (<code>\gets</code>) 或 $\to$ (<code>\to</code>)；推导因果用 $\implies$ (<code>\implies</code>) 或 $\Leftarrow, \Rightarrow$。
+                <br />• 整除与取模：整除使用 $\lfloor \frac{a}{b} \rfloor$，取模使用 $\bmod$ (<code>\bmod</code>)，同余使用 $\equiv$ (<code>\equiv</code>) 与 $\pmod p$ (<code>\pmod p</code>)。
+                <br />• 算法复杂度：大 O 记号中不应带有常数，常量用字母表示（如 $\mathcal{O}(n \log n)$、$\mathcal{O}(V + E)$），严禁写为纯文本 <code>O(n)</code>。
+                <br />• 科学计数法：大数字使用科学计数法表示（如 $5 \times 10^9$，不写 <code>5e9</code>）。
+                <br />• 函数名正体：$\gcd, \max, \min, \log, \det$，自定义函数使用 $\operatorname{lcm}$ (<code>\operatorname{lcm}</code>)。
+                <br />• 矩阵与分段：连等式使用 <code>\aligned</code>，分段函数使用 <code>\cases</code>，矩阵使用 <code>\bmatrix</code> 或 <code>\pmatrix</code>。
+              </li>
+            </ul>
+          </li>
+
+          <li>
+            <strong>3. 代码块与引用规范</strong>：
+            <ul style="padding-left:18px; margin-top:4px;">
+              <li>代码必须使用 Markdown 行间代码块引用，并显式指定编程语言（如 <code>```cpp</code>、<code>```python</code>）。</li>
+              <li>题解需附带代码实现，过长代码建议使用折叠框（<code>:::info[代码实现]{open}</code>）收起，保持题解清爽。</li>
+              <li>题解如需配图必须上传至洛谷图床（动图可使用 Bilibili 嵌入），严禁使用易失效的外部链接。</li>
+            </ul>
+          </li>
+
+          <li>
+            <strong>4. 题解内容要求</strong>：
+            <ul style="padding-left:18px; margin-top:4px;">
+              <li>题解应包含核心思路、算法原理、重要结论证明与复杂度分析。</li>
+              <li>严禁出现无意义闲聊或求过言论（如“求管理员通过”、“蒟蒻的第一篇题解”、“求赞”等），否则直接拒稿。</li>
+              <li>引用他人内容必须使用链接标注来源；严禁使用生成式 AI 生成核心思路与代码。</li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Section 2: 洛谷扩展语法 -->
+      <h4 style="color:var(--luogu-blue); margin-top:16px;">🌟 洛谷扩展语法速查表：</h4>
+      <table class="luogu-table" style="margin: 10px 0;">
+        <thead>
+          <tr><th>功能</th><th>语法写法</th><th>说明与示例</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>折叠框</td><td><code>::::info[标题]{open}</code> ... <code>::::</code></td><td>支持 info/success/warning/error，支持 <code>{open}</code> 默认展开与公式标题</td></tr>
+          <tr><td>表格合并</td><td><code>^</code> (向上合并) / <code>&lt;</code> (向左合并)</td><td>单元格只包含合并符即可，支持混合使用</td></tr>
+          <tr><td>居中表格</td><td><code>::cute-table</code></td><td>不加参数时默认将紧随的表格居中展示</td></tr>
+          <tr><td>Tuack 竞赛表格</td><td><code>::cute-table{tuack}</code></td><td>竞赛风格美化表格（经典蓝白网格与悬停效果）</td></tr>
+          <tr><td>居中/居右排版</td><td><code>:::align{center}</code> / <code>:::align{right}</code></td><td>将内部文本、图片、公式进行居中或居右排版</td></tr>
+          <tr><td>三线表</td><td><code>::cute-table{three}</code> + 表格</td><td>仅保留顶线、表头线、底线的学术风格表格</td></tr>
+          <tr><td>Tuack 表格</td><td><code>::cute-table{tuack}</code> / <code>{tuack=3}</code></td><td>竞赛风格表格；<code>=N</code> 在第 N 列加粗竖线分栏</td></tr>
+          <tr><td>引言展示</td><td><code>:::epigraph[落款]</code> ... <code>:::</code></td><td>优雅的名言展示块（带引号图标与右对齐作者）</td></tr>
+          <tr><td>B站视频嵌入</td><td><code>![](bilibili:BV号)</code></td><td>嵌入高清 Bilibili 视频播放器</td></tr>
+          <tr><td>代码块特性</td><td><code>```cpp line-numbers lines=5-6</code></td><td>默认fallback到C++，支持行号 (<code>line-numbers</code>) 与高亮 (<code>lines=5-6</code>)</td></tr>
+          <tr><td>KaTeX 数学公式</td><td><code>$x$</code> 与 <code>$$\sum$$</code></td><td>KaTeX 全面数学公式排版引擎</td></tr>
+        </tbody>
+      </table>
+
+      <!-- Section 3: 快捷键 -->
+      <h4 style="color:var(--luogu-blue); margin-top: 16px;">⌨️ Windows 快捷键：</h4>
+      <p style="margin:6px 0; color:var(--text-secondary,#666); font-size:13px;">
+        下表中的 <code>Ctrl</code> 在 macOS 上对应 <code>⌘</code>。标注
+        <b>洛谷</b> 的与洛谷官方编辑器一致。
+      </p>
+      <ul style="padding-left: 20px; margin-top: 6px;">
+        <li><code>Ctrl + B</code>：加粗文本　<b>洛谷</b></li>
+        <li><code>Ctrl + I</code>：斜体文本　<b>洛谷</b></li>
+        <li><code>Ctrl + D</code>：删除线　<b>洛谷</b></li>
+        <li><code>Ctrl + M</code>：插入行内数学公式 <code>$</code>　<b>洛谷</b></li>
+        <li><code>Ctrl + Shift + H</code>：插入水平线　<b>洛谷</b></li>
+        <li><code>Ctrl + Shift + L</code>：插入链接　<b>洛谷</b></li>
+        <li><code>Ctrl + Shift + I</code>：插入图片　<b>洛谷</b></li>
+        <li><code>Ctrl + Shift + Q</code>：插入引用块　<b>洛谷</b></li>
+        <li><code>Ctrl + Shift + 1</code>：插入代码块　<b>洛谷</b></li>
+        <li><code>Ctrl + Shift + 2</code>：插入表格　<b>洛谷</b></li>
+        <li><code>Ctrl + Shift + 7</code>：插入无序列表　<b>洛谷</b></li>
+        <li><code>Ctrl + Shift + 8</code>：插入有序列表　<b>洛谷</b></li>
+        <li><code>Ctrl + Shift + 9</code>：插入任务列表　<b>洛谷</b></li>
+        <li><code>Ctrl + Shift + ↑</code> / <code>Ctrl + Shift + ↓</code>：提升 / 降低标题等级（H1～H6，段落⇄标题）　<b>洛谷</b></li>
+        <li><code>Ctrl + S</code>：保存 Markdown 到本地　<span style="opacity:.7">（本编辑器特有）</span></li>
+        <li><code>Ctrl + K</code> / <code>Ctrl + Shift + K</code>：插入超链接 / 行内公式　<span style="opacity:.7">（本编辑器旧键，仍可用）</span></li>
+        <li><code>Ctrl + Shift + M</code>：插入行间数学公式 <code>$$</code>　<span style="opacity:.7">（本编辑器特有）</span></li>
+        <li><code>Ctrl + Z</code> / <code>Ctrl + Y</code>：撤销 / 重做</li>
+        <li><code>Tab</code> / <code>Shift + Tab</code>：增加 / 减少 4 空格缩进</li>
+      </ul>
+
+      <h4 style="color:var(--luogu-blue); margin-top: 16px;">🔣 KaTeX 全局宏（<code>\gdef</code>）：</h4>
+      <ul style="padding-left: 20px; margin-top: 6px;">
+        <li>在任意公式里用 <code>\gdef\宏名{内容}</code> 定义，<b>本文档后续所有公式</b>都能使用。例如先写
+          <code>$\gdef\dp{\mathrm{dp}}$</code>，之后 <code>$\dp_i$</code> 即可。</li>
+        <li>作用范围严格限定在<b>当前文档</b>：宏不会串到下一篇文章、不会影响公式面板，
+          也不会残留到下次渲染；导出的 HTML 会带上宏的渲染结果，照常显示。</li>
+        <li>宏<b>只对定义之后的公式生效</b>，写在前面的公式不受影响；同名宏可在文中重新定义，前后各取各的值。</li>
+        <li>宏内依然受安全策略约束：<code>\href</code> 的危险协议、<code>\htmlClass</code> 等一律拦截。</li>
+      </ul>
+
+      <h4 style="color:var(--luogu-blue); margin-top: 16px;">🖊️ Typora 模式（所见即所得）：</h4>
+      <ul style="padding-left: 20px; margin-top: 6px;">
+        <li>点击工具栏右上角的 <b>✏️ 铅笔图标</b> 进入，此时预览区就是编辑区。</li>
+        <li><b>点击任意块</b>（段落、标题、列表、公式皆可）即展开它的 Markdown 源码就地编辑。</li>
+        <li><b>代码块</b>：点代码区只编辑代码本身，<code>```</code> 围栏与语言标记不会暴露；框内 <code>Tab</code> / <code>Shift+Tab</code> 可增减缩进。</li>
+        <li><b>表格</b>：点某个单元格只编辑那一格，其余单元格与对齐行原样保留。</li>
+        <li><b>合并单元格</b>：鼠标悬停在用 <code>&lt;</code> / <code>^</code> 合并出的大格子上，该格会<b>临时解除合并</b>，还原成一个个真实格子并显示各自的源码标记，方便看清合并范围；移开即恢复，不改动文档。点击可编辑合并关系。</li>
+        <li><b>折叠框</b>：点标题文字改标题，点左侧图标弹出<b>类别菜单</b>（提示 / 成功 / 警告 / 错误，当前项打勾），点框内文字只改那一段。</li>
+        <li><b>Bilibili 卡片</b>：点卡片可修改 BV 号与标题；播放按钮仍照常加载视频。</li>
+        <li><b>点击块与块之间的空白处</b>（或空文档的正文区）可直接在该位置新起一段，前后会自动留出空行。</li>
+        <li><b>点击别处</b>、按 <code>Esc</code> 或 <code>Ctrl + Enter</code> 折叠回渲染效果；新起的一段若没写内容则自动丢弃。</li>
+        <li>块内可以照常敲回车写多行；撤销、自动保存、排版检查、导出全部照常工作。</li>
+        <li>随时可切回双栏模式，内容不会丢失。</li>
+      </ul>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="LuoguEditor.closeModal('helpModal')">知道了</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div id="toastContainer" class="toast-container" role="status" aria-live="polite" aria-atomic="true"></div>
+<script src="{% static 'md_editor/luogu-widget.js' %}"></script>
+<script>
+  // 资源加载器由 base.html 以 defer 引入（与「已发布内容」的渲染器共用一份，内部按 profile 去重）。
+  // defer 脚本先于 DOMContentLoaded 执行，所以这里登记时 LMDLoader 一定已就绪；
+  // 而此刻 textarea 里仍是服务端渲染的初值 —— 上游 init() 会优先读 localStorage 草稿、
+  // 读不到就塞一份演示模板，所以必须在这个时点把初值交给适配层。
+  document.addEventListener('DOMContentLoaded', function () {
+    var root = document.querySelector('[data-lmd-editor]');
+    if (!root) return;
+    if (window.LMDLoader) {
+      window.LMDLoader.register(root);
+    } else {
+      console.error('[lmd] 找不到 LMDLoader：base.html 是否引入了 md_editor/luogu-loader.js？');
+    }
+  });
+</script>

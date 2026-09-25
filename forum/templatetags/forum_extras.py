@@ -1,10 +1,24 @@
-"""论坛通用模板标签：头像渲染等。"""
+"""论坛通用模板标签：头像渲染、@提及解析等。"""
 
 from django import template
 
 from forum.avatars import avatar_url, fallback_color, fallback_initial
+from forum.notifications import existing_usernames, extract_mentions
 
 register = template.Library()
+
+
+@register.filter
+def valid_mentions(content):
+    """内容里真实存在的被 @ 用户名，逗号分隔，交给前端渲染器加个人主页链接。
+
+    只给存在的用户加链接，否则 @ 一个不存在的名字会点到 404。
+    先做一次纯文本判断，内容里没有 @ 就完全不查库。
+    """
+    text = content or ''
+    if '@' not in text:
+        return ''
+    return ','.join(existing_usernames(extract_mentions(text)))
 
 
 @register.inclusion_tag('forum/_avatar.html')

@@ -88,7 +88,7 @@
       </div>
     </header>
 
-    <article class="post-content markdown-body mb-4">{{ post.content_html | safe }}</article>
+    {% include 'forum/_markdown.html' with markdown=post.content fallback_html=post.content_html extra_class='post-content mb-4' mentions=post.content|valid_mentions %}
   </article>
 
   <hr class="my-4" />
@@ -102,7 +102,7 @@
     {% if comments %}
       <div class="comments-list">
         {% for comment in comments %}
-          <article class="comment-item mb-3 border rounded" aria-labelledby="commentLabel{{ forloop.counter }}">
+          <article id="comment-{{ comment.id }}" class="comment-item mb-3 border rounded" aria-labelledby="commentLabel{{ forloop.counter }}">
             <div class="comment-header border-bottom d-flex justify-content-between align-items-start gap-2">
               <div class="d-flex align-items-center gap-2">
                 {% avatar comment.author 24 %}
@@ -137,7 +137,7 @@
                 </div>
               {% endif %}
             </div>
-            <div class="comment-body markdown-body">{{ comment.content_html | safe }}</div>
+            {% include 'forum/_markdown.html' with markdown=comment.content fallback_html=comment.content_html extra_class='comment-body' mentions=comment.content|valid_mentions %}
           </article>
         {% endfor %}
       </div>

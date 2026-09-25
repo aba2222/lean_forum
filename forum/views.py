@@ -23,7 +23,8 @@ from rest_framework.views import APIView
 from forum.api import UserRegistrationSerializer
 from .utils import send_group_notification
 from forum.form import MDEditorCommentForm, MDEditorModelForm, CollectionForm, ProfileForm
-from forum.models import Comment, Item, Post, Rating, Collection, CollectionPost, Profile
+from forum.models import Comment, Item, Post, Rating, Collection, CollectionPost, Profile, Notification
+from forum.notifications import notify_mentions, notify_new_comment
 from forum.bots_manager import manager
 
 # Create your views here.
@@ -71,7 +72,8 @@ def rate_item(request, item_id):
         )
         return redirect('index')
 
-    return render(request, 'forum/rate_item.html', {'name': item.name,'description': item.content_html})
+    # 模板里同时要用到 name 与 Markdown 原文，直接传整个对象
+    return render(request, 'forum/rate_item.html', {'item': item})
 
 @login_required
 def post_create(request):
@@ -84,6 +86,9 @@ def post_create(request):
             mentions = forms.cleaned_data.get("mentions", [])
             for mention in mentions:
                 manager.at_bot(mention, post)
+
+            # @ 到的人各发一条站内通知（同一人的重复提及只会有一条）
+            notify_mentions(post.content, request.user, post=post)
 
             send_group_notification("webpush_new_posts", "新帖子发布了，快去看看吧！", "https://lforum.dpdns.org/posts/")
 
@@ -120,7 +125,9 @@ class PostDetailView(View):
             forms.user = request.user
             forms.post = post
             if forms.is_valid():
-                forms.save()
+                comment = forms.save()
+                notify_new_comment(comment)
+                notify_mentions(comment.content, request.user, post=post, comment=comment)
             else:
                 print(forms.errors)
         return redirect('post_detail', post_id=post.id)
@@ -219,7 +226,9 @@ def post_edit_view(request, post_id):
     post = get_object_or_404(Post, id=post_id, author=request.user)
     form = MDEditorModelForm(request.POST or None, instance=post, user=request.user)
     if request.method == 'POST' and form.is_valid():
-        form.save()
+        post = form.save()
+        # 编辑时补上 @ 也算数（重复提及不会重复通知）
+        notify_mentions(post.content, request.user, post=post)
         return redirect('post_detail', post_id=post.id)
     return render(request, 'forum/post_edit.html', {'form': form, 'post': post})
 
@@ -228,7 +237,8 @@ def comment_edit_view(request, comment_id):
     comment = get_object_or_404(Comment, id=comment_id, author=request.user)
     form = MDEditorCommentForm(request.POST or None, instance=comment, user=request.user, post=comment.post)
     if request.method == 'POST' and form.is_valid():
-        form.save()
+        comment = form.save()
+        notify_mentions(comment.content, request.user, post=comment.post, comment=comment)
         return redirect('post_detail', post_id=comment.post.id)
     return render(request, 'forum/comment_edit.html', {'form': form, 'comment': comment})
 
@@ -397,7 +407,9 @@ def collection_post_detail(request, collection_id, post_id):
     if request.method == 'POST' and request.user.is_authenticated:
         forms = MDEditorCommentForm(request.POST, user=request.user, post=post)
         if forms.is_valid():
-            forms.save()
+            comment = forms.save()
+            notify_new_comment(comment)
+            notify_mentions(comment.content, request.user, post=post, comment=comment)
         return redirect('collection_post_detail', collection_id=collection.id, post_id=post.id)
 
     comments = post.comments.all().order_by('created_at')
@@ -507,3 +519,48 @@ def profile_edit_view(request):
         form = ProfileForm(instance=profile)
 
     return render(request, 'forum/profile_edit.html', {'form': form, 'profile': profile})
+
+
+# ---- Notifications / 站内通知 ----
+
+
+@login_required
+def notification_list_view(request):
+    """通知列表：未读高亮，点进去即标为已读。"""
+    queryset = (
+        Notification.objects
+        .filter(recipient=request.user)
+        .select_related('actor', 'post', 'comment')
+    )
+    paginator = Paginator(queryset, 20)
+    page_obj = paginator.get_page(request.GET.get('page', 1))
+
+    return render(request, 'forum/notifications.html', {
+        'notifications': page_obj,
+        'page_obj': page_obj,
+        'unread_count': queryset.filter(is_read=False).count(),
+    })
+
+
+@login_required
+@require_POST
+def notification_read_view(request, notification_id):
+    """标为已读并跳到对应的帖子/评论。
+
+    用 POST 而不是 GET：GET 带副作用会被浏览器预取、被爬虫误触发。
+    """
+    notification = get_object_or_404(
+        Notification, id=notification_id, recipient=request.user
+    )
+    if not notification.is_read:
+        notification.is_read = True
+        notification.save(update_fields=['is_read'])
+    return redirect(notification.get_absolute_url())
+
+
+@login_required
+@require_POST
+def notification_read_all_view(request):
+    Notification.objects.filter(recipient=request.user, is_read=False).update(is_read=True)
+    messages.success(request, '通知已全部标为已读。')
+    return redirect('notification_list')

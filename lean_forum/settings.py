@@ -110,6 +110,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                # 导航栏铃铛的未读通知数（未登录时直接给 0，不查库）
+                'forum.context_processors.notifications',
             ],
         },
     },
