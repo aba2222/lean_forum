@@ -18,7 +18,7 @@ def avatar_upload_to(instance, filename):
     suffix = Path(filename).suffix.lower()
     if suffix == '.jpeg':
         suffix = '.jpg'
-    if suffix not in ('.jpg', '.png', '.webp'):
+    if suffix not in ('.jpg', '.png', '.webp', '.gif'):
         suffix = '.jpg'
     return f"avatars/u{instance.user_id}/{uuid.uuid4().hex}{suffix}"
 
