@@ -1,6 +1,5 @@
 import re, random
-from django.db.models import F, Sum
-from django.db.models import Q
+from django.db.models import Avg, Count, F, Q, Sum
 from django.db import models as db_models
 from django.http import JsonResponse
 from django.urls import reverse_lazy
@@ -29,28 +28,43 @@ from forum.bots_manager import manager
 # Create your views here.
 
 def index(request):
-    items = Item.objects.all()
-    posts = Post.objects.order_by('-created_at')[:6]
+    items = Item.objects.annotate(
+        avg_score=Avg('rating__score'),
+        rating_count=Count('rating'),
+    )
+    posts = Post.objects.select_related('author').order_by('-created_at')[:6]
     post_count = Post.objects.count()
-    return render(request, 'forum/index.html', {'items': items, 'posts' : posts, 'post_count': post_count})
+    return render(request, 'forum/index.html', {
+        'items': items,
+        'posts': posts,
+        'post_count': post_count,
+        'star_range': range(1, 6),
+    })
+
 
 class PostListView(ListView):
     model = Post
     template_name = 'forum/post_list.html'
     paginate_by = 20
 
+    context_object_name = 'posts'
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["now"] = timezone.now()
+        context["q"] = self.request.GET.get('q', '').strip()
+        # Paginator 已经算过总数，直接复用，避免再发一次 COUNT 查询
+        context["post_count"] = context["paginator"].count
         return context
 
     def get_queryset(self):
-       query = self.request.GET.get("q", "").strip()
-       if not query:
-           return Post.objects.all()
-       return Post.objects.filter(
-           Q(title__icontains=query) | Q(content__icontains=query)
-       )
+        qs = Post.objects.select_related('author')
+        query = self.request.GET.get('q', '').strip()
+        if not query:
+            return qs
+        return qs.filter(
+            Q(title__icontains=query) | Q(content__icontains=query)
+        )
 
 @login_required
 def rate_item(request, item_id):
@@ -264,12 +278,15 @@ def about_view(request):
 # ---- Collection views ----
 
 def collection_list(request):
-    collections = Collection.objects.select_related('owner').all()
+    collections = Collection.objects.select_related('owner').annotate(
+        post_count=Count('collection_posts'),
+    ).order_by('-created_at')
     paginator = Paginator(collections, 20)
     page_obj = paginator.get_page(request.GET.get('page', 1))
     return render(request, 'forum/collection_list.html', {
         'collections': page_obj,
         'page_obj': page_obj,
+        'collection_count': paginator.count,
     })
 
 
@@ -293,6 +310,7 @@ def collection_detail(request, collection_id):
         'collection': collection,
         'collection_posts': page_obj,
         'page_obj': page_obj,
+        'post_count': paginator.count,
     })
 
 

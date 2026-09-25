@@ -1,48 +1,102 @@
 {% extends 'base.html' %}
-{% load forum_extras %}
+{% load humanize forum_extras %}
 
 {% block title %}合集{% endblock %}
 
 {% block content %}
-  <h1>合集</h1>
-  {% if user.is_authenticated %}
-    <a href="{% url 'collection_create' %}" class="btn btn-primary btn-sm mb-3">创建合集</a>
-  {% endif %}
+  <header class="mb-4">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+      <div>
+        <h1 class="h2 mb-1">合集</h1>
+        <p class="text-muted mb-0">
+          全站共 {{ collection_count }} 个合集
+        </p>
+      </div>
+      {% if user.is_authenticated %}
+        <a href="{% url 'collection_create' %}" class="btn btn-primary">
+          <span class="d-inline-flex align-items-center gap-1">
+            <span aria-hidden="true">{% include 'forum/icons/collection.svg' %}</span>
+            <span>创建合集</span>
+          </span>
+        </a>
+      {% endif %}
+    </div>
+  </header>
 
-  <ul class="list-group">
-    {% for collection in collections %}
-      <li class="list-group-item d-flex justify-content-between align-items-center">
-        <div>
-          <a href="{% url 'collection_detail' collection.id %}">{{ collection.name }}</a>
+  {% if collections %}
+    <ul class="list-group list-group-flush border rounded shadow-sm overflow-hidden">
+      {% for collection in collections %}
+        <li class="list-group-item d-flex justify-content-between align-items-start gap-3 py-3">
+          <div class="flex-grow-1 min-w-0">
+            <div class="d-flex flex-wrap align-items-baseline gap-2 mb-1">
+              <a href="{% url 'collection_detail' collection.id %}" class="fs-5 fw-semibold text-decoration-none text-break">
+                {{ collection.name }}
+              </a>
+              <span class="badge bg-secondary rounded-pill">
+                {{ collection.post_count }} 篇
+              </span>
+            </div>
+            <div class="d-flex flex-wrap align-items-center gap-3 text-muted small">
+              <a
+                class="d-inline-flex align-items-center gap-1 text-decoration-none text-muted"
+                href="{% url 'profile' collection.owner.username %}"
+                title="创建者"
+              >
+                {% avatar collection.owner 20 %}
+                <span>{{ collection.owner.username }}</span>
+              </a>
+              <span class="d-inline-flex align-items-center gap-1" title="创建时间">
+                <span aria-hidden="true">{% include 'forum/icons/calendar.svg' %}</span>
+                <span>{{ collection.created_at | naturaltime }}</span>
+              </span>
+            </div>
+            {% if collection.content %}
+              <p class="text-muted mt-2 mb-0 small">
+                {{ collection.content | truncatechars:100 }}
+              </p>
+            {% endif %}
+          </div>
           <a
-            class="small ms-2 text-decoration-none d-inline-flex align-items-center gap-1"
-            href="{% url 'profile' collection.owner.username %}"
+            href="{% url 'collection_detail' collection.id %}"
+            class="btn btn-outline-secondary btn-sm flex-shrink-0 mt-1"
+            aria-label="进入合集 {{ collection.name }}"
           >
-            {% avatar collection.owner 18 %}
-            <span>{{ collection.owner.username }}</span>
+            进入 →
           </a>
-          {% if collection.content %}
-            <br /><small class="text-muted">{{ collection.content | truncatechars:100}}</small>
-          {% endif %}
-        </div>
-        <span class="badge bg-secondary">{{ collection.collection_posts.count }} 篇</span>
-      </li>
-      {% empty %}
-      <li class="list-group-item">暂无合集</li>
-    {% endfor %}
-  </ul>
-
-  {% if page_obj.has_other_pages %}
-  <nav class="pagination mt-3" aria-label="合集分页">
-    <ul class="pagination justify-content-center">
-      {% if page_obj.has_previous %}
-        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">上一页</a></li>
-      {% endif %}
-      <li class="page-item disabled"><span class="page-link">第 {{ page_obj.number }} 页 / 共 {{ page_obj.paginator.num_pages }} 页</span></li>
-      {% if page_obj.has_next %}
-        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">下一页</a></li>
-      {% endif %}
+        </li>
+      {% endfor %}
     </ul>
-  </nav>
+
+    {% if page_obj.has_other_pages %}
+      <nav class="pagination mt-4" aria-label="合集分页">
+        <ul class="pagination justify-content-center mb-0">
+          {% if page_obj.has_previous %}
+            <li class="page-item">
+              <a class="page-link" href="?page={{ page_obj.previous_page_number }}">上一页</a>
+            </li>
+          {% endif %}
+          <li class="page-item disabled">
+            <span class="page-link">第 {{ page_obj.number }} 页 / 共 {{ page_obj.paginator.num_pages }} 页</span>
+          </li>
+          {% if page_obj.has_next %}
+            <li class="page-item">
+              <a class="page-link" href="?page={{ page_obj.next_page_number }}">下一页</a>
+            </li>
+          {% endif %}
+        </ul>
+      </nav>
+    {% endif %}
+  {% else %}
+    <div class="alert alert-light border d-flex align-items-center gap-2">
+      <span aria-hidden="true">{% include 'forum/icons/exclamation-circle.svg' %}</span>
+      <div>
+        还没有合集。
+        {% if user.is_authenticated %}
+          <a href="{% url 'collection_create' %}" class="alert-link">创建第一个合集</a>
+        {% else %}
+          登录后即可创建。
+        {% endif %}
+      </div>
+    </div>
   {% endif %}
 {% endblock %}
