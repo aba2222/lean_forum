@@ -21,12 +21,15 @@
             <p class="text-muted small mb-0">这位用户还没有填写个人简介。</p>
           {% endif %}
 
-          {% if profile.location or profile.website %}
+          {% if profile.region or profile.website %}
             <ul class="list-unstyled small text-muted text-start mt-4 mb-0 profile-meta">
-              {% if profile.location %}
+              {% if profile.region %}
                 <li class="d-flex align-items-start gap-2">
                   <span aria-hidden="true">{% include 'forum/icons/person.svg' %}</span>
-                  <span>{{ profile.location }}</span>
+                  <span>
+                    {{ profile.region }}
+                    <span class="text-body-tertiary">（IP 归属地）</span>
+                  </span>
                 </li>
               {% endif %}
               {% if profile.website %}

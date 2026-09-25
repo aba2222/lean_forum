@@ -141,9 +141,26 @@ GET /api/posts/{id}/
 | `DEBUG` | 调试模式；只有 `1`/`true`/`yes`/`on` 才算开启 | `0` |
 | `SERVE_MEDIA` | 由 Django 直接提供 `/media/` 上传文件（头像、帖子图片）；已用 nginx/CDN 托管 `/media/` 时设为 `0` | `1` |
 | `SERVE_STATIC` | 由 Django 直接提供 `/static/`（需先 `collectstatic`）；已用前置服务器托管时设为 `0` | `1` |
+| `FORUM_TRUSTED_PROXY_COUNT` | 前面有几层反向代理。`0` = Django 直接对外，`1` = 一层 nginx。见下方说明 | `0` |
+| `FORUM_GEOIP_API` | 个人主页「IP 归属地」的查询接口，`{ip}` 会被替换成客户端 IP；留空则不做在线查询 | ip-api.com |
+| `FORUM_GEOIP_TIMEOUT` | 归属地查询超时，单位秒 | `2` |
 
 > 本地开发请设置 `DEBUG=1`。开启调试后 `runserver` 会直接从各 app 的 `static/` 目录
 > 提供静态文件（含 Markdown 编辑器），无需先跑 `collectstatic`。
+
+### 关于 IP 归属地
+
+个人主页上的归属地是由 IP 自动算出来的（只到省市一级，例如「浙江 杭州」），
+**不保存也不展示完整 IP**。原来的「所在地」是一个让用户自己手填的文本框，已由它取代。
+
+- **只在登录时和保存资料时查询**：同一个 IP 12 小时内不重复查，换网络了才会再查一次。
+  查询失败不影响登录，归属地留空或者保留上一次的结果。
+- **`FORUM_TRUSTED_PROXY_COUNT` 一定要配对**。如果前面有 nginx 却没设成 `1`，
+  所有用户都会显示成同一个归属地（nginx 所在的机器）。反过来，没有反代却设成 `1`，
+  客户端就能用一个伪造的 `X-Forwarded-For` 编造自己的归属地。
+- **默认会往 ip-api.com 发一次请求**（免费、无需 key、支持中文返回）。
+  不想把用户 IP 发给第三方的话，把 `FORUM_GEOIP_API` 指向自建服务，或者留空——
+  留空时只有内网地址会显示「本地网络」，其余留空不显示。
 
 ## 测试
 

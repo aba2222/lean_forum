@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.test import TestCase, override_settings
+from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -13,6 +13,13 @@ import tempfile
 from PIL import Image
 
 from .avatars import AVATAR_MAX_BYTES, AVATAR_MAX_EDGE, avatar_url, fallback_color, fallback_initial
+from .geolocation import (
+    PRIVATE_REGION,
+    client_ip,
+    format_region,
+    refresh_profile_region,
+    resolve_region,
+)
 from .models import Post, Comment, Item, Rating, Profile
 
 # Create your tests here.
@@ -213,6 +220,150 @@ class ForumTests(TestCase):
         self.assertTrue(new_user.check_password('pw1'))
 
 
+@override_settings(FORUM_GEOIP_API='', FORUM_TRUSTED_PROXY_COUNT=0)
+class ClientIPTests(TestCase):
+    """从请求里取客户端 IP。"""
+
+    def request_with(self, remote_addr, forwarded=None):
+        request = RequestFactory().get('/')
+        request.META['REMOTE_ADDR'] = remote_addr
+        if forwarded is not None:
+            request.META['X-Forwarded-For'] = forwarded
+        return request
+
+    def test_uses_remote_addr_when_no_proxy_is_trusted(self):
+        self.assertEqual(client_ip(self.request_with('203.0.113.9')), '203.0.113.9')
+
+    def test_forwarded_header_is_ignored_when_no_proxy_is_trusted(self):
+        """X-Forwarded-For 客户端可以自己写，没有反代时不能信它。"""
+        request = self.request_with('203.0.113.9', forwarded='1.2.3.4')
+
+        self.assertEqual(client_ip(request), '203.0.113.9')
+
+    @override_settings(FORUM_TRUSTED_PROXY_COUNT=1)
+    def test_takes_the_hop_closest_to_us_when_one_proxy_is_trusted(self):
+        """左边那段是客户端伪造成「前面还有一层」用的，取右边的才可信。"""
+        request = self.request_with('10.0.0.1', forwarded='1.2.3.4, 198.51.100.7')
+
+        self.assertEqual(client_ip(request), '198.51.100.7')
+
+    def test_unparsable_values_become_empty(self):
+        self.assertEqual(client_ip(self.request_with('not-an-ip')), '')
+        self.assertEqual(client_ip(None), '')
+
+
+class RegionLookupTests(TestCase):
+    """IP → 归属地。"""
+
+    def test_private_addresses_are_never_looked_up_online(self):
+        for ip in ('127.0.0.1', '10.0.0.5', '192.168.1.1', '172.16.0.1', '::1'):
+            self.assertEqual(resolve_region(ip), PRIVATE_REGION)
+
+    def test_format_region_picks_province_and_city(self):
+        payload = {'regionName': '浙江', 'city': '杭州', 'country': '中国'}
+
+        self.assertEqual(format_region(payload), '浙江 杭州')
+
+    def test_format_region_unwraps_nested_payloads(self):
+        self.assertEqual(format_region({'data': {'pro': '广东', 'city': '深圳'}}), '广东 深圳')
+
+    def test_format_region_falls_back_to_country(self):
+        self.assertEqual(format_region({'country_name': '日本'}), '日本')
+
+    def test_format_region_survives_junk(self):
+        self.assertEqual(format_region(None), '')
+        self.assertEqual(format_region({'status': 'fail'}), '')
+
+    def test_no_endpoint_configured_means_no_lookup(self):
+        with override_settings(FORUM_GEOIP_API=''):
+            self.assertEqual(resolve_region('8.8.8.8'), '')
+
+    def test_endpoint_without_the_placeholder_is_refused(self):
+        with override_settings(FORUM_GEOIP_API='http://example.com/lookup'):
+            self.assertEqual(resolve_region('8.8.8.8'), '')
+
+    def test_a_dead_endpoint_returns_empty_instead_of_raising(self):
+        with override_settings(
+            FORUM_GEOIP_API='http://127.0.0.1:9/{ip}', FORUM_GEOIP_TIMEOUT=0.5
+        ):
+            self.assertEqual(resolve_region('8.8.8.8'), '')
+
+
+@override_settings(FORUM_GEOIP_API='')
+class ProfileRegionTests(TestCase):
+    """归属地落到个人主页上的整条链路。"""
+
+    def setUp(self):
+        self.username = 'regionuser'
+        self.password = 'pw123456'
+        self.user = User.objects.create_user(self.username, password=self.password)
+
+    def login(self):
+        """走真实登录视图。
+
+        self.client.login() 内部建的是一个没有 META 的裸 HttpRequest，
+        拿不到 REMOTE_ADDR，测不出归属地这条链路。
+        """
+        return self.client.post(
+            reverse('login'), {'username': self.username, 'password': self.password}
+        )
+
+    def test_login_records_the_region(self):
+        self.login()
+
+        profile = Profile.objects.get(user=self.user)
+        self.assertEqual(profile.last_ip, '127.0.0.1')
+        self.assertEqual(profile.region, PRIVATE_REGION)
+        self.assertIsNotNone(profile.region_checked_at)
+
+    def test_region_is_not_looked_up_again_while_the_ip_is_unchanged(self):
+        self.login()
+        first = Profile.objects.get(user=self.user).region_checked_at
+
+        self.client.logout()
+        self.login()
+
+        self.assertEqual(Profile.objects.get(user=self.user).region_checked_at, first)
+
+    def test_profile_page_shows_the_region_and_labels_it(self):
+        self.login()
+
+        page = self.client.get(reverse('profile', kwargs={'username': self.username}))
+
+        self.assertContains(page, PRIVATE_REGION)
+        self.assertContains(page, 'IP 归属地')
+
+    def test_a_failed_lookup_keeps_the_previous_region(self):
+        """接口挂了就留上次的结果，不能把已经显示出来的归属地清空。"""
+        profile = Profile.objects.get(user=self.user)
+        profile.region = '浙江 杭州'
+        profile.save()
+
+        request = RequestFactory().get('/')
+        request.META['REMOTE_ADDR'] = '8.8.8.8'
+        with override_settings(
+            FORUM_GEOIP_API='http://127.0.0.1:9/{ip}', FORUM_GEOIP_TIMEOUT=0.5
+        ):
+            refresh_profile_region(profile, request, force=True)
+
+        profile.refresh_from_db()
+        self.assertEqual(profile.region, '浙江 杭州')
+        self.assertEqual(profile.last_ip, '8.8.8.8')
+
+    def test_forced_refresh_overwrites_a_stale_region(self):
+        profile = Profile.objects.get(user=self.user)
+        profile.region = '旧的'
+        profile.last_ip = '8.8.8.8'
+        profile.save()
+
+        request = RequestFactory().get('/')
+        request.META['REMOTE_ADDR'] = '127.0.0.1'
+        refresh_profile_region(profile, request, force=True)
+
+        profile.refresh_from_db()
+        self.assertEqual(profile.region, PRIVATE_REGION)
+
+
 class AvatarHelperTests(TestCase):
     """默认字母头像的配色/首字，以及头像压缩归一化。"""
 
@@ -378,7 +529,6 @@ class ProfileTests(TestCase):
             {
                 'content': '**你好**，我是 xiokuai',
                 'website': 'https://example.com',
-                'location': '杭州',
             },
         )
 
@@ -386,13 +536,18 @@ class ProfileTests(TestCase):
         self.assertEqual(resp.url, reverse('profile', kwargs={'username': 'xiokuai'}))
 
         profile = Profile.objects.get(user=self.user)
-        self.assertEqual(profile.location, '杭州')
         self.assertEqual(profile.website, 'https://example.com')
         self.assertIn('<strong>你好</strong>', profile.content_html)
 
         page = self.client.get(reverse('profile', kwargs={'username': 'xiokuai'}))
         self.assertContains(page, '<strong>你好</strong>', html=False)
-        self.assertContains(page, '杭州')
+
+    def test_profile_form_no_longer_asks_for_a_location(self):
+        """所在地改成按 IP 自动算，表单里不该再有这个字段。"""
+        from .form import ProfileForm
+
+        self.assertNotIn('location', ProfileForm().fields)
+        self.assertIn('region', [field.name for field in Profile._meta.get_fields()])
 
     def test_profile_edit_rejects_too_long_bio(self):
         resp = self.client.post(reverse('profile_edit'), {'content': '字' * 2001})

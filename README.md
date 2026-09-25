@@ -95,9 +95,29 @@ GET /api/posts/{id}/
 | `DEBUG` | Debug mode; only `1`/`true`/`yes`/`on` enables it | `0` |
 | `SERVE_MEDIA` | Serve `/media/` uploads (avatars, post images) from Django. Set to `0` when a front-end server (nginx/CDN) already handles `/media/` | `1` |
 | `SERVE_STATIC` | Serve `/static/` from Django (requires `collectstatic`). Set to `0` when a front-end server handles `/static/` | `1` |
+| `FORUM_TRUSTED_PROXY_COUNT` | Number of reverse proxies in front of Django. `0` = exposed directly, `1` = one nginx. See below | `0` |
+| `FORUM_GEOIP_API` | Endpoint used to turn a client IP into a region for the profile page; `{ip}` is substituted. Empty disables online lookups | ip-api.com |
+| `FORUM_GEOIP_TIMEOUT` | Region lookup timeout in seconds | `2` |
 
 > Local development: set `DEBUG=1`. With debug on, `runserver` serves app static files
 > (including the Markdown editor) directly, so `collectstatic` is not needed.
+
+### About the profile region
+
+The region shown on a profile page (e.g. "浙江 杭州") is derived from the user's IP.
+Only the province/city level is stored or displayed — **the full IP is never shown**.
+It replaces the old "location" text field that users had to fill in themselves.
+
+- Lookups happen **on login and on profile save only**, at most once every 12 hours per
+  IP. A failed lookup never breaks login; the region is left empty or keeps its
+  previous value.
+- **`FORUM_TRUSTED_PROXY_COUNT` must match your setup.** Behind nginx without setting it
+  to `1`, every user shows the same region (nginx's machine). Without a proxy but set to
+  `1`, a client can fabricate its own region via a forged `X-Forwarded-For`.
+- **By default one request goes to ip-api.com** (free, no key, Chinese output). To keep
+  user IPs off third-party services, point `FORUM_GEOIP_API` at your own service or set
+  it empty — with it empty, only private addresses get a region and everything else is
+  blank.
 
 ## License
 

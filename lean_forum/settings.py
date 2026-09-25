@@ -46,6 +46,30 @@ SERVE_MEDIA = env_flag("SERVE_MEDIA", default=True)
 SERVE_STATIC = env_flag("SERVE_STATIC", default=True)
 
 
+# 个人主页上的「IP 归属地」。
+#
+# 原来是一个让用户自己手填的「所在地」文本框，现在改成按 IP 自动算。
+# 只取到省/市一级，完整 IP 既不展示也不落库（Profile.last_ip 只用来判断
+# 归属地要不要重算，不对外输出）。
+
+# 前面有几层反向代理。0 = Django 直接对外（取 REMOTE_ADDR）；
+# 1 = 一层 nginx（取 X-Forwarded-For 里紧挨着我们的那一项）。
+# 注意：X-Forwarded-For 客户端可以伪造，所以只信右边（离我们最近）的那几跳。
+FORUM_TRUSTED_PROXY_COUNT = int(os.environ.get("FORUM_TRUSTED_PROXY_COUNT", default="0"))
+
+# 归属地查询接口，{ip} 会被替换成客户端 IP。
+# 默认用 ip-api.com：免费、无需 key、支持中文返回（lang=zh-CN）。
+# 想换成自建服务或离线库，改这个环境变量；留空则完全不做在线查询
+# （那样归属地只会对内网地址显示「本地网络」，其余留空）。
+FORUM_GEOIP_API = os.environ.get(
+    "FORUM_GEOIP_API",
+    default="http://ip-api.com/json/{ip}?lang=zh-CN&fields=status,country,regionName,city",
+)
+
+# 查询超时（秒）。归属地是锦上添花，超时就放弃，不能拖慢登录。
+FORUM_GEOIP_TIMEOUT = float(os.environ.get("FORUM_GEOIP_TIMEOUT", default="2"))
+
+
 # ALLOWED_HOSTS 通过环境变量配置（逗号分隔）；
 # 未设置时默认 ["*"]，如需严格限制生产域名请显式传入 ALLOWED_HOSTS
 ALLOWED_HOSTS = [

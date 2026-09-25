@@ -21,6 +21,7 @@ from rest_framework.views import APIView
 
 
 from forum.api import UserRegistrationSerializer
+from .geolocation import refresh_profile_region
 from .utils import send_group_notification
 from forum.form import MDEditorCommentForm, MDEditorModelForm, CollectionForm, ProfileForm
 from forum.models import Comment, Item, Post, Rating, Collection, CollectionPost, Profile
@@ -493,13 +494,18 @@ def profile_view(request, username):
 
 @login_required
 def profile_edit_view(request):
-    """编辑自己的资料：头像、简介、个人网站、所在地。"""
+    """编辑自己的资料：头像、简介、个人网站。
+
+    归属地不在这里填 —— 它由登录时的 IP 自动算出（见 forum/geolocation.py）。
+    保存资料时顺手强制重算一次，用户换了网络再改资料就能立刻看到更新。
+    """
     profile, _ = Profile.objects.get_or_create(user=request.user)
 
     if request.method == 'POST':
         form = ProfileForm(request.POST, request.FILES, instance=profile)
         if form.is_valid():
-            form.save()
+            profile = form.save()
+            refresh_profile_region(profile, request, force=True)
             messages.success(request, '资料已更新。')
             return redirect('profile', username=request.user.username)
         messages.error(request, '资料保存失败，请检查下面的提示。')

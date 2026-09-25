@@ -94,12 +94,11 @@ class ProfileForm(forms.ModelForm):
 
     class Meta:
         model = Profile
-        fields = ['avatar', 'content', 'website', 'location']
+        fields = ['avatar', 'content', 'website']
         labels = {
             'avatar': '头像',
             'content': '个人简介',
             'website': '个人网站',
-            'location': '所在地',
         }
         help_texts = {
             'avatar': '支持 JPG / PNG / WebP，不超过 2 MB；会自动摆正方向并压缩到 512px 以内。',
@@ -117,9 +116,6 @@ class ProfileForm(forms.ModelForm):
                     'maxlength': 200,
                     'placeholder': 'https://example.com',
                 }
-            ),
-            'location': forms.TextInput(
-                attrs={'class': 'form-control', 'maxlength': 60, 'placeholder': '例如：杭州'}
             ),
         }
 
@@ -139,9 +135,6 @@ class ProfileForm(forms.ModelForm):
 
     def clean_website(self):
         return (self.cleaned_data.get('website') or '').strip()
-
-    def clean_location(self):
-        return (self.cleaned_data.get('location') or '').strip()
 
     def save(self, commit=True):
         # 注意：_post_clean 已经先把新文件塞进 self.instance.avatar 了，

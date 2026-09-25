@@ -35,7 +35,11 @@ class Profile(MarkdownModel):
     avatar = models.ImageField('头像', upload_to=avatar_upload_to, blank=True, null=True)
     content = MDTextField(max_length=200, blank=True, verbose_name='个人简介')
     website = models.URLField('个人网站', max_length=200, blank=True)
-    location = models.CharField('所在地', max_length=60, blank=True)
+    #: 归属地由 IP 自动得出，不再让用户手填（见 forum/geolocation.py）
+    region = models.CharField('IP 归属地', max_length=60, blank=True)
+    #: 最近一次见到的 IP，用来判断归属地要不要重新查；不对外展示
+    last_ip = models.GenericIPAddressField('最近一次访问 IP', blank=True, null=True)
+    region_checked_at = models.DateTimeField('归属地查询时间', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

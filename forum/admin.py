@@ -13,9 +13,10 @@ admin.site.register(CollectionPost)
 
 @admin.register(Profile)
 class ProfileAdmin(admin.ModelAdmin):
-    list_display = ('user', 'has_avatar', 'location', 'website', 'updated_at')
-    search_fields = ('user__username', 'location')
-    readonly_fields = ('created_at', 'updated_at')
+    list_display = ('user', 'has_avatar', 'region', 'website', 'updated_at')
+    search_fields = ('user__username', 'region')
+    # 归属地由 IP 自动得出，last_ip 只用来判断要不要重算，都不给手改
+    readonly_fields = ('created_at', 'updated_at', 'region', 'last_ip', 'region_checked_at')
 
     @admin.display(description='已设置头像', boolean=True)
     def has_avatar(self, obj):
