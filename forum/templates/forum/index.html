@@ -67,12 +67,7 @@
               <div class="card-body d-flex flex-column">
                 <h3 class="h5 card-title">{{ post.title }}</h3>
                 <p class="card-subtitle text-muted mb-3 d-flex align-items-center gap-2">
-                  {% avatar post.author 24 %}
-                  <a
-                    class="link-secondary text-decoration-none"
-                    href="{% url 'profile' post.author.username %}"
-                    >{{ post.author.username }}</a
-                  >
+                  {% user_link post.author 24 "link-secondary text-decoration-none d-inline-flex align-items-center gap-2" %}
                 </p>
                 <p class="card-text text-muted mb-4">{{ post.created_at | naturaltime }}</p>
                 <a href="{% url 'post_detail' post.id %}" class="btn btn-outline-primary mt-auto">

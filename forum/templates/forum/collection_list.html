@@ -14,13 +14,7 @@
       <li class="list-group-item d-flex justify-content-between align-items-center">
         <div>
           <a href="{% url 'collection_detail' collection.id %}">{{ collection.name }}</a>
-          <a
-            class="small ms-2 text-decoration-none d-inline-flex align-items-center gap-1"
-            href="{% url 'profile' collection.owner.username %}"
-          >
-            {% avatar collection.owner 18 %}
-            <span>{{ collection.owner.username }}</span>
-          </a>
+          {% user_link collection.owner 18 "small ms-2 text-decoration-none d-inline-flex align-items-center gap-1" %}
           {% if collection.content %}
             <br /><small class="text-muted">{{ collection.content | truncatechars:100}}</small>
           {% endif %}

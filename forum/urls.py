@@ -23,6 +23,7 @@ urlpatterns = [
     path('settings/', views.user_settings_view, name='settings'),
     path('settings/user_delete/', views.user_delete_view, name='user_delete'),
     path('u/<str:username>/', views.profile_view, name='profile'),
+    path('u/<str:username>/card/', views.user_card_view, name='user_card'),
     path('profile/edit/', views.profile_edit_view, name='profile_edit'),
     path('register/', views.RegisterView.as_view(), name='register'),
     path('about/', views.about_view, name='about'),

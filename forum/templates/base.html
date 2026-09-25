@@ -79,6 +79,106 @@
         min-height: calc(100vh - 8rem);
       }
 
+      /* 个人主页顶部的背景图。没上传时 style 里给的是按用户名生成的渐变，
+         有图则是一张照片，两种情况走同一套铺满规则 */
+      .profile-cover {
+        height: 150px;
+        background-size: cover;
+        background-position: center;
+        position: relative;
+      }
+
+      /* 压一层从上到下的暗色，避免亮色背景把卡片上的字吃掉 */
+      .profile-cover::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          180deg,
+          rgba(0, 0, 0, 0.04) 0%,
+          rgba(0, 0, 0, 0.42) 100%
+        );
+      }
+
+      .profile-card {
+        overflow: hidden;
+      }
+
+      /* 头像压在背景图下沿上：一半在图上，一半在卡片里 */
+      .profile-cover + .card-body {
+        padding-top: 0;
+      }
+
+      .profile-cover + .card-body > :first-child {
+        margin-top: -3.5rem;
+        box-shadow: 0 0 0 4px var(--bs-body-bg);
+      }
+
+      /* 昵称悬停名片 */
+      .user-link {
+        cursor: pointer;
+      }
+
+      .user-card {
+        position: fixed;
+        z-index: 1080;
+        width: 260px;
+        padding: 0.75rem;
+        border-radius: 0.75rem;
+        border: 1px solid var(--bs-border-color);
+        background-color: var(--bs-body-bg);
+        box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+        font-size: 0.85rem;
+        line-height: 1.45;
+      }
+
+      .user-card-head {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+      }
+
+      .user-card-avatar {
+        flex: 0 0 auto;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        object-fit: cover;
+      }
+
+      .user-card-initial {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-weight: 600;
+        font-size: 1.1rem;
+      }
+
+      .user-card-name {
+        font-weight: 600;
+        word-break: break-all;
+      }
+
+      .user-card-joined,
+      .user-card-stats {
+        color: var(--bs-secondary-color);
+        font-size: 0.78rem;
+      }
+
+      .user-card-bio {
+        margin: 0.6rem 0 0;
+        word-break: break-word;
+      }
+
+      .user-card-stats {
+        display: flex;
+        gap: 0.9rem;
+        margin-top: 0.6rem;
+        padding-top: 0.6rem;
+        border-top: 1px solid var(--bs-border-color);
+      }
+
       /* 头像：上传图与默认字母头像共用一套尺寸/圆角规则，可直接当图标用 */
       .avatar-img,
       .avatar-initial {
@@ -269,6 +369,8 @@
       integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
       crossorigin="anonymous"
     ></script>
+
+    <script src="{% static 'forum/user_card.js' %}"></script>
 
     <script>
       const themeToggle = document.getElementById('theme-toggle');

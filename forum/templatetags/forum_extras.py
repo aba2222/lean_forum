@@ -41,3 +41,36 @@ def avatar(user, size=32):
         'color': fallback_color(name),
         'initial': fallback_initial(name),
     }
+
+
+@register.inclusion_tag('forum/_user_link.html')
+def user_link(user, size=0, css_class=''):
+    """渲染一个指向个人主页的昵称链接，并挂上悬停名片。
+
+    用法：
+        {% user_link post.author %}                      只显示昵称
+        {% user_link post.author 24 %}                   头像 + 昵称
+        {% user_link post.author 24 "text-decoration-none" %}
+
+    名片数据放在 data-user-card 里（值是接口 URL），由
+    static/forum/user-card.js 在第一次悬停时才去取。
+    """
+    username = ''
+    if user is not None:
+        if hasattr(user, 'get_username'):
+            username = user.get_username()
+        else:
+            username = str(user)
+    username = username.strip()
+
+    try:
+        size = int(size)
+    except (TypeError, ValueError):
+        size = 0
+
+    return {
+        'user': user,
+        'username': username,
+        'size': max(0, size),
+        'css_class': css_class,
+    }

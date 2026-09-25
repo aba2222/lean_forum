@@ -213,6 +213,277 @@ class ForumTests(TestCase):
         self.assertTrue(new_user.check_password('pw1'))
 
 
+class CoverHelperTests(TestCase):
+    """个人主页背景图的归一化与兜底渐变。"""
+
+    def test_normalize_cover_shrinks_a_wide_image(self):
+        from .covers import COVER_MAX_HEIGHT, COVER_MAX_WIDTH, normalize_cover
+
+        normalized = normalize_cover(upload_image(name='c.png', size=(4000, 1200)))
+
+        self.assertEqual(normalized.name, 'cover.jpg')
+        with Image.open(io.BytesIO(normalized.read())) as image:
+            self.assertLessEqual(image.width, COVER_MAX_WIDTH)
+            self.assertLessEqual(image.height, COVER_MAX_HEIGHT)
+            # 横幅的宽高比要保住，不能被压成方的
+            self.assertGreater(image.width / image.height, 1.5)
+
+    def test_normalize_cover_does_not_upscale_a_small_image(self):
+        from .covers import normalize_cover
+
+        normalized = normalize_cover(upload_image(name='c.png', size=(320, 120)))
+
+        with Image.open(io.BytesIO(normalized.read())) as image:
+            self.assertEqual(image.size, (320, 120))
+
+    def test_normalize_cover_keeps_transparency_as_png(self):
+        from .covers import normalize_cover
+
+        normalized = normalize_cover(
+            upload_image(name='c.png', size=(600, 200), mode='RGBA')
+        )
+
+        self.assertEqual(normalized.name, 'cover.png')
+
+    def test_normalize_cover_rejects_non_image(self):
+        from django.core.exceptions import ValidationError
+
+        from .covers import normalize_cover
+
+        with self.assertRaises(ValidationError):
+            normalize_cover(
+                SimpleUploadedFile('x.png', b'not-an-image', content_type='image/png')
+            )
+
+    def test_normalize_cover_rejects_oversize(self):
+        from django.core.exceptions import ValidationError
+
+        from .covers import COVER_MAX_BYTES, normalize_cover
+
+        raw = image_bytes(size=(64, 64))
+        payload = raw + b'\0' * (COVER_MAX_BYTES + 1 - len(raw))
+
+        with self.assertRaises(ValidationError):
+            normalize_cover(SimpleUploadedFile('big.png', payload, content_type='image/png'))
+
+    def test_shade_darkens_without_leaving_the_hex_range(self):
+        from .covers import shade
+
+        self.assertEqual(shade('#ffffff', 0.5), '#7f7f7f')
+        self.assertEqual(shade('#000000', 0.5), '#000000')
+        self.assertTrue(shade('#ff0000', 0.99).startswith('#f'))
+
+    def test_fallback_gradient_is_stable_per_username(self):
+        from .covers import fallback_cover
+
+        self.assertEqual(fallback_cover('xiokuai'), fallback_cover('xiokuai'))
+        self.assertNotEqual(fallback_cover('xiokuai'), fallback_cover('aba2222'))
+        self.assertIn('linear-gradient', fallback_cover('xiokuai'))
+
+    def test_cover_background_prefers_the_uploaded_image(self):
+        from .covers import cover_background
+
+        user = User.objects.create_user('coverless', password='pw123456')
+        self.assertIn('linear-gradient', cover_background(user))
+
+        profile = Profile.objects.get(user=user)
+        profile.cover = 'covers/u%d/demo.jpg' % user.pk
+        profile.save()
+        user.refresh_from_db()  # profile 关系可能还是赋值前的缓存
+
+        self.assertTrue(cover_background(user).startswith('url("'))
+
+    def test_cover_background_without_a_user_still_returns_a_gradient(self):
+        from .covers import cover_background
+
+        self.assertIn('linear-gradient', cover_background(None))
+
+
+class CoverUploadTests(TestCase):
+    """背景图从表单到个人主页的整条链路。"""
+
+    def setUp(self):
+        self.username = 'coveruser'
+        self.password = 'pw123456'
+        self.user = User.objects.create_user(self.username, password=self.password)
+        self.temp_dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.temp_dir, True)
+        override = override_settings(MEDIA_ROOT=self.temp_dir)
+        override.enable()
+        self.addCleanup(override.disable)
+        self.client.login(username=self.username, password=self.password)
+
+    def test_uploading_a_cover_stores_it_and_shows_it_on_the_profile(self):
+        resp = self.client.post(
+            reverse('profile_edit'),
+            {
+                'content': '',
+                'website': '',
+                'location': '',
+                'cover': upload_image(name='wide.png', size=(3000, 900)),
+            },
+        )
+        self.assertEqual(resp.status_code, 302)
+
+        profile = Profile.objects.get(user=self.user)
+        self.assertTrue(profile.cover.name.startswith('covers/u'))
+        self.assertTrue(profile.cover.name.endswith('.jpg'))
+        self.assertTrue(os.path.exists(profile.cover.path))
+
+        page = self.client.get(reverse('profile', kwargs={'username': self.username}))
+        self.assertContains(page, 'profile-cover')
+        self.assertContains(page, profile.cover.url)
+
+    def test_profile_without_a_cover_falls_back_to_a_gradient(self):
+        page = self.client.get(reverse('profile', kwargs={'username': self.username}))
+
+        self.assertContains(page, 'profile-cover')
+        self.assertContains(page, 'linear-gradient')
+
+    def test_replacing_a_cover_deletes_the_old_file(self):
+        self.client.post(
+            reverse('profile_edit'),
+            {'content': '', 'website': '', 'location': '',
+             'cover': upload_image(name='a.png', size=(800, 300))},
+        )
+        first_path = Profile.objects.get(user=self.user).cover.path
+
+        self.client.post(
+            reverse('profile_edit'),
+            {'content': '', 'website': '', 'location': '',
+             'cover': upload_image(name='b.png', size=(900, 300), color=(10, 90, 200))},
+        )
+
+        second_path = Profile.objects.get(user=self.user).cover.path
+        self.assertNotEqual(first_path, second_path)
+        self.assertFalse(os.path.exists(first_path))
+        self.assertTrue(os.path.exists(second_path))
+
+    def test_clearing_a_cover_removes_the_file(self):
+        self.client.post(
+            reverse('profile_edit'),
+            {'content': '', 'website': '', 'location': '',
+             'cover': upload_image(name='a.png', size=(800, 300))},
+        )
+        path = Profile.objects.get(user=self.user).cover.path
+
+        self.client.post(
+            reverse('profile_edit'),
+            {'content': '', 'website': '', 'location': '', 'cover-clear': 'on', 'cover': ''},
+        )
+
+        self.assertFalse(bool(Profile.objects.get(user=self.user).cover))
+        self.assertFalse(os.path.exists(path))
+
+    def test_cover_kept_when_the_form_is_resubmitted_without_a_new_file(self):
+        self.client.post(
+            reverse('profile_edit'),
+            {'content': '', 'website': '', 'location': '',
+             'cover': upload_image(name='a.png', size=(800, 300))},
+        )
+        before = Profile.objects.get(user=self.user).cover.name
+
+        self.client.post(
+            reverse('profile_edit'),
+            {'content': '只改简介', 'website': '', 'location': ''},
+        )
+
+        profile = Profile.objects.get(user=self.user)
+        self.assertEqual(profile.cover.name, before)
+        self.assertTrue(os.path.exists(profile.cover.path))
+
+
+class UserCardTests(TestCase):
+    """昵称悬停名片的接口与标签。"""
+
+    def setUp(self):
+        self.username = 'carduser'
+        self.password = 'pw123456'
+        self.user = User.objects.create_user(self.username, password=self.password)
+        self.post = Post.objects.create(author=self.user, title='t', content='c')
+        Comment.objects.create(post=self.post, author=self.user, content='hello')
+
+    def test_card_returns_only_public_fields(self):
+        response = self.client.get(reverse('user_card', kwargs={'username': self.username}))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload['username'], self.username)
+        self.assertEqual(payload['posts'], 1)
+        self.assertEqual(payload['comments'], 1)
+        self.assertEqual(payload['url'], reverse('profile', kwargs={'username': self.username}))
+        self.assertEqual(payload['initial'], 'C')
+        # 不在个人主页上公开的东西一个都不能出现
+        for leaked in ('email', 'password', 'last_login', 'is_staff', 'is_superuser'):
+            self.assertNotIn(leaked, payload)
+
+    def test_card_bio_is_plain_text_not_html(self):
+        """简介在主页上是 Markdown 渲染出来的 HTML，名片里只能给纯文本。
+
+        客户端用 textContent 写进 DOM，所以这里不需要（也不应该）转义成实体：
+        用户在正文里写的 <script> 在主页上本来就是当纯文本显示的。
+        """
+        profile = Profile.objects.get(user=self.user)
+        profile.content = '**加粗** 和 [链接](https://example.com)'
+        profile.save()
+
+        payload = self.client.get(
+            reverse('user_card', kwargs={'username': self.username})
+        ).json()
+
+        self.assertNotIn('<strong>', payload['bio'])
+        self.assertNotIn('<a ', payload['bio'])
+        self.assertIn('加粗', payload['bio'])
+        self.assertIn('链接', payload['bio'])
+
+    def test_card_bio_is_truncated(self):
+        profile = Profile.objects.get(user=self.user)
+        profile.content = '字' * 300
+        profile.save()
+
+        payload = self.client.get(
+            reverse('user_card', kwargs={'username': self.username})
+        ).json()
+
+        self.assertLessEqual(len(payload['bio']), 81)
+        self.assertTrue(payload['bio'].endswith('…'))
+
+    def test_card_for_an_unknown_user_is_404(self):
+        response = self.client.get(reverse('user_card', kwargs={'username': 'nobody'}))
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_user_link_renders_the_link_and_the_card_hook(self):
+        rendered = Template(
+            '{% load forum_extras %}{% user_link u 24 "extra-class" %}'
+        ).render(Context({'u': self.user}))
+
+        profile_url = reverse('profile', kwargs={'username': self.username})
+        card_url = reverse('user_card', kwargs={'username': self.username})
+        self.assertIn('href="%s"' % profile_url, rendered)
+        self.assertIn('data-user-card="%s"' % card_url, rendered)
+        self.assertIn('extra-class', rendered)
+        self.assertIn('avatar-initial', rendered)
+
+    def test_user_link_without_a_user_is_text_not_a_link(self):
+        rendered = Template('{% load forum_extras %}{% user_link none %}').render(Context({}))
+
+        self.assertNotIn('<a', rendered)
+        self.assertIn('匿名用户', rendered)
+
+    def test_pages_that_show_a_username_carry_the_card_hook(self):
+        hook = 'data-user-card="%s"' % reverse('user_card', kwargs={'username': self.username})
+
+        detail = self.client.get(reverse('post_detail', kwargs={'post_id': self.post.id}))
+        self.assertContains(detail, hook)
+
+        listing = self.client.get(reverse('post_list'))
+        self.assertContains(listing, hook)
+
+        index = self.client.get(reverse('index'))
+        self.assertContains(index, hook)
+
+
 class AvatarHelperTests(TestCase):
     """默认字母头像的配色/首字，以及头像压缩归一化。"""
 
