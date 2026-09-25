@@ -1,0 +1,1249 @@
+/**
+ * Typora mode: the preview pane doubles as the editor.
+ *
+ * The whole document stays rendered; clicking a block swaps just that block for a
+ * plain <textarea> holding its Markdown source, and blurring it (or pressing Escape /
+ * Ctrl+Enter) folds it back into rendered HTML. That is exactly how Typora behaves,
+ * and it is the only design that keeps this project's guarantees intact:
+ *
+ *   - The parser stays the single source of truth. Nothing renders through a second,
+ *     divergent code path, so Typora mode can never drift from split mode.
+ *   - The textarea in the left pane remains the canonical document. Every edit is
+ *     written back into it and flows through the existing setContent/render pipeline,
+ *     so undo, autosave, linting, export and scroll sync keep working untouched.
+ *   - IME composition is safe: a real <textarea> is used for editing, never
+ *     contenteditable, so Chinese/Japanese input behaves exactly as it does elsewhere.
+ *
+ * Block identity comes from the `data-src-line` / `data-src-end-line` anchors the
+ * parser already attaches to every top-level element, so no new bookkeeping is needed.
+ */
+(function (global) {
+  'use strict';
+
+  // Blocks that own their source range and can therefore be edited in place.
+  // Everything the parser emits at top level carries data-src-line, so this is really
+  // a list of what we refuse to edit rather than what we accept.
+  const NON_EDITABLE = new Set(['HR']);
+
+  // Container bodies whose children are independent, individually editable blocks.
+  // `align` renders as .luogu-align-{left,center,right} and epigraph as
+  // .luogu-epigraph-body; without these the inner paragraph resolved to the whole
+  // container, so clicking the text opened `:::align{center}` and hid the content.
+  const CONTAINER_BODY_RE = /(?:^|\s)(?:luogu-align-(?:left|center|right)|luogu-epigraph-body)(?:\s|$)/;
+  const CONTAINER_HOST_SEL = 'details.luogu-callout, [class*="luogu-align-"], .luogu-epigraph';
+
+  class LuoguTypora {
+    constructor(editor) {
+      this.editor = editor;          // the LuoguEditor instance
+      this.active = false;
+      this.openBlock = null;         // { wrapper, textarea, startLine, endLine, marker }
+      this._onClick = this._onClick.bind(this);
+      this._onKeyDown = this._onKeyDown.bind(this);
+      this._onOver = this._onOver.bind(this);
+      this._onMouseDown = this._onMouseDown.bind(this);
+      this._onOut = this._onOut.bind(this);
+      this._hint = null;
+    }
+
+    get previewEl() { return this.editor.previewEl; }
+    get sourceEl() { return this.editor.textarea; }
+
+    enable() {
+      if (this.active) return;
+      this.active = true;
+      this.previewEl.classList.add('typora-mode');
+      this.previewEl.addEventListener('mousedown', this._onMouseDown, true);
+      this.previewEl.addEventListener('click', this._onClick);
+      this.previewEl.addEventListener('keydown', this._onKeyDown, true);
+      this.previewEl.addEventListener('mouseover', this._onOver);
+      this.previewEl.addEventListener('mouseout', this._onOut);
+      this.previewEl.setAttribute('tabindex', '0');
+    }
+
+    disable() {
+      if (!this.active) return;
+      this.closeCalloutMenu();
+      this.commit();
+      this.active = false;
+      this.previewEl.classList.remove('typora-mode');
+      this.previewEl.removeEventListener('click', this._onClick);
+      this.previewEl.removeEventListener('keydown', this._onKeyDown, true);
+      this.previewEl.removeEventListener('mousedown', this._onMouseDown, true);
+      this.previewEl.removeEventListener('mouseover', this._onOver);
+      this.previewEl.removeEventListener('mouseout', this._onOut);
+      this.clearCellHint();
+      this.previewEl.removeAttribute('tabindex');
+    }
+
+    // ---- source-range helpers ------------------------------------------------
+
+    lines() { return this.sourceEl.value.split('\n'); }
+
+    /**
+     * Resolve the [start, end] source line range a rendered block owns.
+     *
+     * `data-src-line` is the authoritative start. The end is either the explicit
+     * `data-src-end-line` (containers publish it) or, failing that, the line just
+     * before the next block's start — which is why the caller passes the sorted list
+     * of every anchor on the page rather than us re-querying per click.
+     */
+    rangeOf(el, anchors) {
+      const start = parseInt(el.getAttribute('data-src-line'), 10);
+      if (!Number.isFinite(start)) return null;
+
+      const explicitEnd = parseInt(el.getAttribute('data-src-end-line'), 10);
+      if (Number.isFinite(explicitEnd) && explicitEnd >= start) {
+        return { start, end: explicitEnd };
+      }
+
+      const all = this.lines();
+      let next = all.length;
+
+      // A nested block (inside a callout) must be bounded by its *siblings*, not by
+      // the page-wide anchor list: the container's own closing `:::` is not an anchor,
+      // so a global scan would let the block run past the end of its container.
+      const parent = el.parentElement;
+      const inContainer = parent && parent.classList
+        && (parent.classList.contains('luogu-callout-content')
+          || CONTAINER_BODY_RE.test(parent.className || ''));
+      if (inContainer) {
+        for (let sib = el.nextElementSibling; sib; sib = sib.nextElementSibling) {
+          const s = parseInt(sib.getAttribute('data-src-line'), 10);
+          if (Number.isFinite(s) && s > start) { next = s; break; }
+        }
+        if (next === all.length) {
+          // Last block in the container: stop before the container's closing fence.
+          const host = el.closest(CONTAINER_HOST_SEL);
+          const hostEnd = host && parseInt(host.getAttribute('data-src-end-line'), 10);
+          if (Number.isFinite(hostEnd)) next = hostEnd;
+        }
+      } else {
+        for (const a of anchors) {
+          if (a > start) { next = a; break; }
+        }
+      }
+      // Trailing blank lines belong to the gap between blocks, not to this block;
+      // swallowing them would make every commit grow the document.
+      let end = Math.min(next - 1, all.length - 1);
+      while (end > start && /^\s*$/.test(all[end])) end--;
+      return { start, end };
+    }
+
+    anchorList() {
+      return Array.from(this.previewEl.querySelectorAll('[data-src-line]'))
+        .map((n) => parseInt(n.getAttribute('data-src-line'), 10))
+        .filter(Number.isFinite)
+        .sort((a, b) => a - b);
+    }
+
+    /** The nearest ancestor (inclusive) that is a top-level rendered block. */
+    /**
+     * The block a click should act on.
+     *
+     * Walking to the *outermost* anchor is right for a plain top-level block, but
+     * wrong inside a container: clicking a paragraph in a `:::info` should edit that
+     * paragraph, not swallow the whole callout. So prefer the innermost anchor that
+     * lies inside a container, and otherwise fall back to the top-level one.
+     */
+    blockFor(node) {
+      let el = node.nodeType === 3 ? node.parentElement : node;
+      let innermost = null;
+      let outermost = null;
+      let sawContainer = false;
+
+      while (el && el !== this.previewEl) {
+        if (el.hasAttribute && el.hasAttribute('data-src-line')) {
+          if (!innermost) innermost = el;
+          outermost = el;
+        }
+        if (el.classList && (el.classList.contains('luogu-callout-content')
+          || CONTAINER_BODY_RE.test(el.className || ''))) {
+          sawContainer = true;
+        }
+        // A blockquote nests too, and its inner blocks carry their own anchors.
+        // Without this, every click inside a quote resolved to the outermost quote,
+        // so editing a nested quote replaced the whole thing.
+        if (el.classList && el.classList.contains('luogu-blockquote')) {
+          sawContainer = true;
+        }
+        // Same for a list: each <li> carries its own span, so clicking one bullet
+        // should edit that bullet rather than the whole list.
+        if (el.tagName === 'LI' || el.tagName === 'UL' || el.tagName === 'OL') {
+          sawContainer = true;
+        }
+        el = el.parentElement;
+      }
+      return (sawContainer && innermost) ? innermost : outermost;
+    }
+
+    // ---- open / commit -------------------------------------------------------
+
+    /**
+     * Stop <summary> from toggling when the press lands on the title text or the
+     * type icon.
+     *
+     * Chromium toggles <details> on mousedown, so preventing the default at click
+     * time is already too late: the box had flipped and the editor recorded that
+     * flip as a deliberate fold. Renaming a box must not fold it.
+     */
+    _onMouseDown(e) {
+      if (!this.active || e.button !== 0) return;
+      const summary = e.target.closest && e.target.closest('.luogu-callout-summary');
+      if (!summary) return;
+      if (e.target.closest('.luogu-callout-icon')) { e.preventDefault(); return; }
+      const titleEl = e.target.closest('.luogu-callout-title');
+      if (titleEl && this.hitsText(titleEl, e)) e.preventDefault();
+    }
+
+    _onClick(e) {
+      if (!this.active) return;
+
+      // A click inside the open editor must not re-open or close it.
+      if (this.openBlock && this.openBlock.wrapper.contains(e.target)) return;
+
+      // Sub-block targets are checked before the generic interactive-control bail-out,
+      // because several of them (the callout <summary>, the copy button's header) are
+      // themselves interactive yet need to become editable.
+      if (this.routeSubBlock(e)) return;
+
+      // A task checkbox is wrapped in a <label>, so a click anywhere on that label —
+      // including the text — is forwarded to the box by the browser. Only treat the
+      // box itself as "toggle"; a click on the label's text edits the item instead,
+      // and must have its default suppressed or it would silently flip the box too.
+      const taskBox = e.target.closest('.luogu-task-checkbox');
+      if (taskBox) return;
+      const taskLabel = e.target.closest('.luogu-checkbox-label');
+      if (taskLabel) e.preventDefault();
+
+      // Let genuinely interactive controls keep working instead of turning the block
+      // into source the moment the user aims at them.
+      if (!taskLabel
+        && e.target.closest('a, button, input, summary, .luogu-copy-btn, .luogu-bilibili-container')) {
+        return;
+      }
+
+      const block = this.blockFor(e.target);
+
+      // Landing on a block that exists but refuses in-place editing (a horizontal
+      // rule has no meaningful source to show) should just close whatever was open —
+      // not start a new paragraph, which would make the rule impossible to click past.
+      if (block && NON_EDITABLE.has(block.tagName)) { this.commit(); return; }
+
+      if (!block) {
+        // Clicking the blank space between blocks (or anywhere in an empty document)
+        // starts a new paragraph there, the way Typora does. Without this the gaps are
+        // dead zones and the only way to add a block is to grow an existing one.
+        this.commit();
+        this.openGap(this.gapAt(e.clientY));
+        return;
+      }
+
+      this.open(block);
+    }
+
+    /**
+     * Route clicks that should edit *part* of a block rather than the whole thing.
+     * Returns true when the click was handled.
+     */
+    routeSubBlock(e) {
+      const anchors = this.anchorList();
+      const all = this.lines();
+
+      // ---- code block: edit only the code, never the fence or its language --------
+      const pre = e.target.closest('pre[data-code-body]');
+      if (pre) {
+        const block = this.blockFor(pre);
+        const range = block && this.rangeOf(block, anchors);
+        if (range) {
+          // Body is everything strictly between the opening and closing fence. An
+          // indented (non-fenced) code block has no fence, so it is edited whole.
+          const opensFence = /^\s*(`{3,}|~{3,})/.test(all[range.start] || '');
+          if (opensFence) {
+            let last = range.end;
+            if (last > range.start && /^\s*(`{3,}|~{3,})\s*$/.test(all[last] || '')) last -= 1;
+            this.openPartial(block, { lines: [range.start + 1, last] },
+              { host: pre, variant: 'code', placeholder: '在此输入代码…' });
+          } else {
+            this.openPartial(block, { lines: [range.start, range.end] },
+              { host: pre, variant: 'code' });
+          }
+          return true;
+        }
+      }
+
+      // ---- bilibili: clicking the card edits the BV id / directive line ------------
+      const bili = e.target.closest('.luogu-bilibili-container');
+      if (bili && !e.target.closest('.luogu-bilibili-facade, iframe, a')) {
+        const block = this.blockFor(bili);
+        const range = block && this.rangeOf(block, anchors);
+        if (range) {
+          this.openPartial(block, { lines: [range.start, range.end] },
+            { host: bili, variant: 'code', placeholder: '例如 ![标题](bilibili:BV1xx411c7XD)' });
+          return true;
+        }
+      }
+
+      // ---- table: edit a single cell ----------------------------------------------
+      // A cell revealed by the hover un-merge carries its own source coordinates, so
+      // clicking a `<` / `^` marker edits just that position instead of falling
+      // through to the generic path and opening the whole table.
+      const ghost = e.target.closest
+        ? e.target.closest('.typora-unmerged-cell[data-hint-line]')
+        : null;
+      if (ghost) {
+        const line = parseInt(ghost.getAttribute('data-hint-line'), 10);
+        const cs = parseInt(ghost.getAttribute('data-hint-start'), 10);
+        const ce = parseInt(ghost.getAttribute('data-hint-end'), 10);
+        const block = this.blockFor(ghost);
+        if (block && Number.isFinite(line) && Number.isFinite(cs) && Number.isFinite(ce)) {
+          // Keep the un-merged skeleton exactly as hover drew it and edit this one
+          // marker in place: the surrounding ghost cells stay visible and keep
+          // showing their markers, only the edited cell turns into an input. The
+          // hint is pinned so the pointer leaving the table (to reach the editor)
+          // cannot tear the skeleton down mid-edit.
+          if (this._hint) this._hint.pinned = true;
+          this.openPartial(block, { line, col: [cs, ce] }, {
+            host: ghost, variant: 'cell', keepHint: true, inHost: true,
+          });
+          return true;
+        }
+      }
+
+      const cell = e.target.closest('td[data-cell-col], th[data-cell-col]');
+      if (cell) {
+        const block = this.blockFor(cell);
+        const range = block && this.rangeOf(block, anchors);
+        const spec = range && this.cellSpec(cell, range, all);
+        if (spec) {
+          // The origin of an un-merged hint is a normal cell, so it lands here rather
+          // than in the ghost branch above. It must still keep the skeleton standing:
+          // tearing it down re-merged the table around the editor and the neighbouring
+          // marker cell collapsed to zero width.
+          const onHint = !!(this._hint && this._hint.cell === cell);
+          if (onHint) this._hint.pinned = true;
+          this.openPartial(block, spec, {
+            host: cell, variant: 'cell',
+            keepHint: onHint, inHost: onHint,
+          });
+          return true;
+        }
+      }
+
+      // ---- align container: the corner badge switches left / center / right -------
+      // The badge is a ::before pseudo-element, so it cannot be an event target;
+      // test the click against the top-left corner box the badge is drawn in.
+      const alignBox = e.target.closest('[class*="luogu-align-"][data-src-line]');
+      if (alignBox && /luogu-align-(left|center|right)/.test(alignBox.className)
+        && this.hitsBadge(alignBox, e)) {
+        e.preventDefault();
+        this.openAlignMenu(alignBox, all);
+        return true;
+      }
+
+      // ---- callout: title text, type icon, and inner content are separate ---------
+      const icon = e.target.closest('.luogu-callout-icon');
+      if (icon) {
+        // The icon lives inside <summary>, whose default action toggles the
+        // <details>. Opening a type menu should not also collapse/expand the box.
+        e.preventDefault();
+        this.openCalloutMenu(icon, all);
+        return true;
+      }
+
+      // Only a click that actually lands on the title *text* renames it. Clicking the
+       // rest of the header row (padding, arrow, the gap after a short title) keeps
+       // the native <summary> behaviour and just expands/collapses the box.
+      const titleEl = e.target.closest('.luogu-callout-title');
+      if (titleEl && this.hitsText(titleEl, e)) {
+        const details = titleEl.closest('details.luogu-callout');
+        const spec = details && this.calloutTitleSpec(details, all);
+        if (spec) {
+          // The title lives inside <summary>, so the native toggle would fire as
+          // well and collapse the box the moment you click its name to rename it.
+          e.preventDefault();
+          this.openPartial(details, spec, {
+            host: titleEl, variant: 'title', placeholder: '折叠框标题',
+          });
+          return true;
+        }
+      }
+
+      // Inner content of a callout: the blocks inside carry their own data-src-line,
+      // so let the generic path pick the innermost one and edit just that block. Only
+      // a click on the container's own padding falls through to editing the whole
+      // container, which is what the user would expect from hitting its border.
+      return false;
+    }
+
+    /** Column range of a table cell within its source line, or null. */
+    cellSpec(cell, range, all) {
+      const r = parseInt(cell.getAttribute('data-cell-row'), 10);
+      const c = parseInt(cell.getAttribute('data-cell-col'), 10);
+      if (!Number.isFinite(r) || !Number.isFinite(c)) return null;
+      const rowspan = parseInt(cell.getAttribute('rowspan'), 10) || 1;
+      const colspan = parseInt(cell.getAttribute('colspan'), 10) || 1;
+
+      // Walk the table's source lines, skipping the delimiter row, to find the line
+      // this cell lives on. Header is row -1; body rows count from 0.
+      const rows = [];
+      for (let i = range.start; i <= range.end; i++) {
+        const t = (all[i] || '').trim();
+        if (!t.startsWith('|')) continue;
+        if (/^\|?[\s:|-]+\|?$/.test(t) && /-/.test(t)) { rows.push({ i, delim: true }); continue; }
+        rows.push({ i, delim: false });
+      }
+      const dataRows = rows.filter((x) => !x.delim);
+      if (!dataRows.length) return null;
+
+      const lineIdx = r < 0 ? dataRows[0].i : (dataRows[r + 1] ? dataRows[r + 1].i : -1);
+      if (lineIdx < 0) return null;
+
+      const cols = this.splitCells(all[lineIdx]);
+      if (!cols[c]) return null;
+
+      // A merged cell is edited as raw source. The rendered table shows one big box,
+      // but the markers that produced it (`<` to merge left, `^` to merge up) live in
+      // the neighbouring cells of the source; hiding them would make the merge
+      // impossible to adjust. So hand back every line/column the merge covers and let
+      // the author see `A |<` / `^ |^` exactly as written.
+      if (rowspan > 1 || colspan > 1) {
+        const startIdx = dataRows.findIndex((x) => x.i === lineIdx);
+        const parts = [];
+        for (let k = 0; k < rowspan; k++) {
+          const row = dataRows[startIdx + k];
+          if (!row) break;
+          const rc = this.splitCells(all[row.i]);
+          const first = rc[c];
+          const last = rc[Math.min(c + colspan - 1, rc.length - 1)];
+          if (!first || !last) break;
+          parts.push({ line: row.i, col: [first.start, last.end] });
+        }
+        if (parts.length) return { rect: parts };
+      }
+
+      return { line: lineIdx, col: [cols[c].start, cols[c].end] };
+    }
+
+    /**
+     * Split a table source line into cell spans, honouring escaped pipes.
+     * Returns [{ start, end }] covering each cell's text (excluding the surrounding
+     * pipes but including its padding, so editing preserves the author's alignment).
+     */
+    splitCells(line) {
+      if (typeof line !== 'string') return [];
+      const bars = [];
+      for (let i = 0; i < line.length; i++) {
+        if (line[i] === '|' && line[i - 1] !== '\\') bars.push(i);
+      }
+      if (bars.length < 2) return [];
+      const out = [];
+      for (let k = 0; k < bars.length - 1; k++) {
+        out.push({ start: bars[k] + 1, end: bars[k + 1] });
+      }
+      return out;
+    }
+
+    /** Column range of a callout's [title] within its ::: header line, or null. */
+    calloutTitleSpec(details, all) {
+      const start = parseInt(details.getAttribute('data-src-line'), 10);
+      if (!Number.isFinite(start)) return null;
+      const line = all[start];
+      if (typeof line !== 'string') return null;
+
+      const m = line.match(/^(\s*:{2,}\s*[A-Za-z][\w-]*)(\[)([^\]]*)(\])/);
+      if (m) {
+        const s = m[1].length + 1;
+        return { line: start, col: [s, s + m[3].length] };
+      }
+      // No [title] yet: insert an empty one right after the directive name so typing
+      // creates it, rather than silently editing nothing.
+      const h = line.match(/^(\s*:{2,}\s*[A-Za-z][\w-]*)/);
+      if (!h) return null;
+      const at = h[1].length;
+      const nl = this.lines();
+      nl[start] = line.slice(0, at) + '[]' + line.slice(at);
+      this.editor.setContent(nl.join('\n'));
+      return null;   // re-rendered; the user can click the (now present) title
+    }
+
+    /** Clicking a callout's icon cycles info -> success -> warning -> error. */
+    /**
+     * True when the pointer is over the element's rendered text, not its slack.
+     *
+     * An inline element's box can be wider than the glyphs inside it (a flex item
+     * that stretched, trailing whitespace, a wrapped last line), and treating the
+     * whole box as "the title" made clicks on empty header space open the rename
+     * editor instead of toggling the callout.
+     */
+    /**
+     * True when the pointer is inside the corner badge drawn by the container's
+     * ::before. The badge sits at the top-left of the box, above its border.
+     */
+    /** Screen rectangle of the corner badge drawn by a container's ::before. */
+    badgeRect(el) {
+      const r = el.getBoundingClientRect();
+      const cs = window.getComputedStyle(el, '::before');
+      const w = parseFloat(cs.width) || 0;
+      const h = parseFloat(cs.height) || 0;
+      if (!w || !h) return null;
+      return {
+        left: r.left, top: r.top - h / 2,
+        right: r.left + w, bottom: r.top + h / 2,
+        width: w, height: h,
+      };
+    }
+
+    hitsBadge(el, e) {
+      if (typeof e.clientX !== 'number') return false;
+      const r = el.getBoundingClientRect();
+      const cs = window.getComputedStyle(el, '::before');
+      const w = parseFloat(cs.width) || 0;
+      const h = parseFloat(cs.height) || 0;
+      if (!w || !h || cs.content === 'none') return false;
+      // Generous vertical slack: the badge straddles the top border.
+      const pad = 4;
+      return e.clientX >= r.left - pad && e.clientX <= r.left + w + pad * 3
+        && e.clientY >= r.top - h && e.clientY <= r.top + h + pad;
+    }
+
+    hitsText(el, e) {
+      if (typeof e.clientX !== 'number') return true;
+      // A synthetic click (el.click(), assistive tech, keyboard activation) reports
+      // 0,0 and carries no real pointer position — treat it as targeting the element.
+      if (e.clientX === 0 && e.clientY === 0 && !e.detail) return true;
+      const range = document.createRange();
+      let hit = false;
+      for (const node of Array.from(el.childNodes)) {
+        if (node.nodeType === 3) {
+          range.selectNodeContents(node);
+        } else if (node.nodeType === 1) {
+          range.selectNode(node);
+        } else continue;
+        for (const r of Array.from(range.getClientRects())) {
+          if (e.clientX >= r.left && e.clientX <= r.right
+            && e.clientY >= r.top && e.clientY <= r.bottom) { hit = true; break; }
+        }
+        if (hit) break;
+      }
+      range.detach && range.detach();
+      return hit;
+    }
+
+    /**
+     * Hovering a merged cell temporarily un-merges it.
+     *
+     * The rendered table shows one big box, so there is no way to see how far a merge
+     * reaches or which markers produced it. On hover the cell drops back to 1x1 and
+     * the positions it had swallowed grow back as real cells showing their own source
+     * text (`<` / `^`) — the table briefly looks the way it would if the merge
+     * markers had no special meaning. Nothing is written to the document.
+     */
+    _onOver(e) {
+      if (!this.active || this.openBlock) return;
+      const cell = e.target && e.target.closest
+        ? e.target.closest('td[data-cell-col], th[data-cell-col]')
+        : null;
+      if (!cell) return;
+      if (this._hint && this._hint.cell === cell) return;
+      this.clearCellHint();
+
+      const rowspan = parseInt(cell.getAttribute('rowspan'), 10) || 1;
+      const colspan = parseInt(cell.getAttribute('colspan'), 10) || 1;
+      if (rowspan <= 1 && colspan <= 1) return;   // plain cell: nothing to un-merge
+
+      const col = parseInt(cell.getAttribute('data-cell-col'), 10);
+      const row = cell.parentElement;
+      const table = cell.closest('table');
+      if (!Number.isFinite(col) || !row || !table) return;
+
+      const all = this.lines();
+      const block = this.blockFor(cell);
+      const range = block && this.rangeOf(block, this.anchorList());
+      const spec = range && this.cellSpec(cell, range, all);
+      if (!spec || !Array.isArray(spec.rect)) return;
+
+      // Source text for every position the merge covers, one array per visual row.
+      // Each revealed position keeps the exact source slice it came from, so a click
+      // can edit that single cell without re-deriving coordinates from the DOM (which
+      // is mid-surgery at that point).
+      const grid = spec.rect.map((part) => this.splitHintRow(
+        (all[part.line] || '').slice(part.col[0], part.col[1]), colspan, part,
+      ));
+      if (!grid.length) return;
+
+      const rows = [row];
+      for (let k = 1; k < rowspan; k++) {
+        const nxt = rows[rows.length - 1].nextElementSibling;
+        if (!nxt) break;
+        rows.push(nxt);
+      }
+
+      const added = [];
+      const make = (piece) => {
+        const td = document.createElement(cell.tagName.toLowerCase());
+        td.className = 'typora-unmerged-cell';
+        td.textContent = piece ? piece.text : '';
+        if (piece && Number.isFinite(piece.line)) {
+          td.setAttribute('data-hint-line', String(piece.line));
+          td.setAttribute('data-hint-start', String(piece.start));
+          td.setAttribute('data-hint-end', String(piece.end));
+        }
+        return td;
+      };
+
+      // First row: the origin cell keeps its own text, the rest of its columns
+      // reappear immediately after it.
+      for (let c = colspan - 1; c >= 1; c--) {
+        const td = make(grid[0] && grid[0][c]);
+        row.insertBefore(td, cell.nextSibling);
+        added.push(td);
+      }
+
+      // Later rows: insert the whole span, positioned by column number so the new
+      // cells land between the correct existing neighbours.
+      for (let k = 1; k < rows.length; k++) {
+        const tr = rows[k];
+        const sibs = Array.from(tr.children);
+        const before = sibs.find((x) => {
+          const n = parseInt(x.getAttribute('data-cell-col'), 10);
+          return Number.isFinite(n) && n > col;
+        }) || null;
+        for (let c = 0; c < colspan; c++) {
+          const td = make(grid[k] && grid[k][c]);
+          tr.insertBefore(td, before);
+          added.push(td);
+        }
+      }
+
+      cell.classList.add('typora-unmerged-origin');
+      if (rowspan > 1) cell.removeAttribute('rowspan');
+      if (colspan > 1) cell.removeAttribute('colspan');
+
+      this._hint = { cell, rowspan, colspan, added, table };
+    }
+
+    _onOut(e) {
+      if (!this._hint || this._hint.pinned) return;
+      // Moving between the cells of the un-merged region must not tear it down, or it
+      // would flicker as the pointer crosses the new borders.
+      const to = e.relatedTarget;
+      if (to && this._hint.table && this._hint.table.contains(to)) {
+        const stillInside = to === this._hint.cell
+          || this._hint.cell.contains(to)
+          || this._hint.added.some((x) => x === to || x.contains(to));
+        if (stillInside) return;
+      }
+      this.clearCellHint();
+    }
+
+    /**
+     * Split one source row of a merged cell into `count` column pieces.
+     *
+     * Each piece carries the absolute source offsets it occupies, so clicking a
+     * revealed marker can rewrite exactly that slice. Offsets are relative to
+     * `part.col[0]`, the start of the merged region on that line.
+     */
+    splitHintRow(raw, count, part) {
+      const base = part ? part.col[0] : 0;
+      const line = part ? part.line : NaN;
+      const pieces = [];
+      let buf = '';
+      let from = 0;
+      for (let i = 0; i < raw.length; i++) {
+        const ch = raw[i];
+        if (ch === '|' && raw[i - 1] !== '\\') {
+          pieces.push({ text: buf, from, to: i });
+          buf = ''; from = i + 1;
+          continue;
+        }
+        buf += ch;
+      }
+      pieces.push({ text: buf, from, to: raw.length });
+
+      const out = pieces.map((x) => ({
+        text: x.text.trim(),
+        line,
+        start: base + x.from,
+        end: base + x.to,
+      }));
+      while (out.length < count) out.push({ text: '', line: NaN, start: 0, end: 0 });
+      return out.slice(0, count);
+    }
+
+    /** Restore a cell that `_onOver` un-merged. */
+    clearCellHint() {
+      const h = this._hint;
+      if (!h) return;
+      h.pinned = false;
+      this._hint = null;
+      for (const td of h.added) if (td.parentNode) td.parentNode.removeChild(td);
+      h.cell.classList.remove('typora-unmerged-origin');
+      if (h.rowspan > 1) h.cell.setAttribute('rowspan', String(h.rowspan));
+      if (h.colspan > 1) h.cell.setAttribute('colspan', String(h.colspan));
+    }
+
+    /**
+     * Clicking a callout's icon opens a small menu to pick its type.
+     *
+     * A cycling click was tried first, but with four types it takes up to three
+     * blind clicks to reach the one you want and there is no way to see the options.
+     */
+    openCalloutMenu(icon, all) {
+      const details = icon.closest('details.luogu-callout');
+      if (!details) return;
+      const start = parseInt(details.getAttribute('data-src-line'), 10);
+      if (!Number.isFinite(start)) return;
+      const line = all[start];
+      const m = typeof line === 'string' && line.match(/^(\s*:{2,}\s*)([A-Za-z][\w-]*)/);
+      if (!m) return;
+
+      const cur = m[2].toLowerCase();
+      const TYPES = [
+        { id: 'info', label: '提示', color: '#3498db' },
+        { id: 'success', label: '成功', color: '#2ecc71' },
+        { id: 'warning', label: '警告', color: '#f39c12' },
+        { id: 'error', label: '错误', color: '#e74c3c' },
+      ];
+      // align / epigraph are containers too, but they have no "type" to switch.
+      if (!TYPES.some((t) => t.id === cur)) return;
+
+      this.openChoiceMenu(icon, TYPES, cur, (id) => this.setCalloutType(start, id));
+    }
+
+    /**
+     * Menu to switch a `:::align` container between left / center / right.
+     *
+     * Reuses the same popup as the callout type menu so both containers behave
+     * identically: the little corner badge that marks the container's extent is
+     * also the control that changes it.
+     */
+    openAlignMenu(badgeHost, all) {
+      const start = parseInt(badgeHost.getAttribute('data-src-line'), 10);
+      if (!Number.isFinite(start)) return;
+      const line = all[start];
+      const m = typeof line === 'string'
+        && line.match(/^(\s*:{2,}\s*align\s*\{\s*)(left|center|right)(\s*\})/i);
+      if (!m) return;
+
+      const cur = m[2].toLowerCase();
+      const ALIGNS = [
+        { id: 'left', label: '居左', color: '#95a5a6' },
+        { id: 'center', label: '居中', color: '#3498db' },
+        { id: 'right', label: '居右', color: '#9b59b6' },
+      ];
+      this.openChoiceMenu(badgeHost, ALIGNS, cur, (id) => this.setAlign(start, id),
+        this.badgeRect(badgeHost));
+    }
+
+    /** Rewrite the alignment keyword on a `:::align{...}` opening line. */
+    setAlign(lineIdx, value) {
+      const all = this.lines();
+      const line = all[lineIdx];
+      const m = typeof line === 'string'
+        && line.match(/^(\s*:{2,}\s*align\s*\{\s*)(left|center|right)(\s*\}.*)$/i);
+      if (!m) return;
+      if (m[2].toLowerCase() === value) return;
+      all[lineIdx] = m[1] + value + m[3];
+      this.editor.setContent(all.join('\n'));
+    }
+
+    /**
+     * Shared popup: a short list of choices anchored under `anchorEl`.
+     *
+     * `onPick` receives the chosen id. Extracted from the callout type menu so the
+     * align menu is the same control rather than a second, subtly different one.
+     */
+    openChoiceMenu(anchorEl, items, cur, onPick, anchorRect) {
+      const icon = anchorEl;
+      this.commit();
+      this.closeCalloutMenu();
+
+      const menu = document.createElement('div');
+      menu.className = 'typora-type-menu';
+      menu.setAttribute('role', 'menu');
+
+      for (const t of items) {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'typora-type-item' + (t.id === cur ? ' is-current' : '');
+        item.setAttribute('role', 'menuitem');
+        item.innerHTML = `<span class="typora-type-dot" style="background:${t.color}"></span>`
+          + `<span class="typora-type-label"></span>`;
+        item.querySelector('.typora-type-label').textContent = t.label;
+        // mousedown, not click: the icon's blur would otherwise tear the menu down
+        // before the click lands.
+        item.addEventListener('mousedown', (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          onPick(t.id);
+          this.closeCalloutMenu();
+        });
+        menu.appendChild(item);
+      }
+
+      document.body.appendChild(menu);
+      // Anchor to the badge, not to the whole container: an align box is as tall as
+      // its content, so dropping the menu from its bottom edge put it far away from
+      // the little corner label the user actually clicked.
+      const r = anchorRect || icon.getBoundingClientRect();
+      menu.style.top = `${Math.round(r.bottom + 6)}px`;
+      menu.style.left = `${Math.round(r.left)}px`;
+      const mb = menu.getBoundingClientRect();
+      // Keep the menu on screen when the anchor sits near the bottom / right edge.
+      if (mb.bottom > window.innerHeight - 8) {
+        menu.style.top = `${Math.round(r.top - mb.height - 6)}px`;
+      }
+      if (mb.right > window.innerWidth - 8) {
+        menu.style.left = `${Math.round(Math.max(8, window.innerWidth - 8 - mb.width))}px`;
+      }
+
+      this._menu = menu;
+      this._menuAway = (ev) => {
+        if (this._menu && !this._menu.contains(ev.target)) this.closeCalloutMenu();
+      };
+      this._menuKey = (ev) => { if (ev.key === 'Escape') this.closeCalloutMenu(); };
+      setTimeout(() => {
+        document.addEventListener('mousedown', this._menuAway, true);
+        document.addEventListener('keydown', this._menuKey, true);
+      }, 0);
+    }
+
+    closeCalloutMenu() {
+      if (!this._menu) return;
+      if (this._menu.parentNode) this._menu.parentNode.removeChild(this._menu);
+      this._menu = null;
+      document.removeEventListener('mousedown', this._menuAway, true);
+      document.removeEventListener('keydown', this._menuKey, true);
+    }
+
+    /** Rewrite the directive name on a container's header line. */
+    setCalloutType(lineIdx, type) {
+      const all = this.lines();
+      const line = all[lineIdx];
+      const m = typeof line === 'string' && line.match(/^(\s*:{2,}\s*)([A-Za-z][\w-]*)/);
+      if (!m) return;
+      if (m[2].toLowerCase() === type) return;
+      all[lineIdx] = m[1] + type + line.slice(m[1].length + m[2].length);
+      this.editor.setContent(all.join('\n'));
+    }
+
+    /**
+     * Work out where a click in the blank space should insert.
+     *
+     * Returns the source line the new text should be spliced in at, found by walking
+     * the rendered blocks and taking the first one whose box starts below the click.
+     * Clicking past the last block appends at end of document.
+     */
+    gapAt(clientY) {
+      const blocks = Array.from(this.previewEl.children)
+        .filter((n) => n.nodeType === 1 && n.hasAttribute('data-src-line')
+          && n.style.display !== 'none');
+
+      const anchors = this.anchorList();
+      const all = this.lines();
+
+      for (const el of blocks) {
+        const r = el.getBoundingClientRect();
+        if (clientY < r.top) {
+          // Insert immediately before this block.
+          const start = parseInt(el.getAttribute('data-src-line'), 10);
+          return Number.isFinite(start) ? start : all.length;
+        }
+        if (clientY <= r.bottom) {
+          // Inside a block's box but not on the block itself (e.g. the margin of a
+          // centred figure). Treat it as "after this block".
+          const range = this.rangeOf(el, anchors);
+          return range ? range.end + 1 : all.length;
+        }
+      }
+      return all.length;
+    }
+
+    /** Open an empty editor that inserts at `atLine` instead of replacing a block. */
+    openGap(atLine) {
+      const all = this.lines();
+      const at = Math.max(0, Math.min(atLine, all.length));
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'typora-editing typora-inserting';
+
+      const ta = document.createElement('textarea');
+      ta.className = 'typora-block-input';
+      ta.value = '';
+      ta.placeholder = '在此输入 Markdown…';
+      ta.spellcheck = false;
+      wrapper.appendChild(ta);
+
+      // Place the editor visually where the click landed so the caret appears under
+      // the pointer rather than jumping to the end of the document.
+      const before = Array.from(this.previewEl.children).find((n) => {
+        if (n.nodeType !== 1 || !n.hasAttribute('data-src-line')) return false;
+        const s = parseInt(n.getAttribute('data-src-line'), 10);
+        return Number.isFinite(s) && s >= at;
+      }) || null;
+      this.previewEl.insertBefore(wrapper, before);
+
+      // An insertion is just a replacement of the empty range [at, at-1]: `commit`
+      // splices `end - start + 1 === 0` lines out and the new text in.
+      this.openBlock = {
+        wrapper,
+        textarea: ta,
+        block: null,
+        marker: document.createComment('typora-insert'),
+        range: { start: at, end: at - 1 },
+        inserting: true,
+      };
+
+      const grow = () => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; };
+      grow();
+      ta.addEventListener('input', grow);
+      ta.addEventListener('blur', () => this.commit());
+      ta.focus();
+    }
+
+    /**
+     * Open an editor over part of a block instead of the whole thing.
+     *
+     * `spec` narrows what the user actually edits:
+     *   { lines: [a, b] }        - only source lines a..b (e.g. a fenced block's body)
+     *   { line, col: [s, e] }    - only a slice of one line (e.g. one table cell)
+     * Committing splices exactly that span back, so the surrounding syntax — the
+     * ``` fence and its language, the ::: container header, the other cells in the
+     * row — is preserved untouched rather than being re-serialised from the DOM.
+     */
+    openPartial(block, spec, opts = {}) {
+      // Not clearCellHint() unconditionally: when the host *is* one of the revealed
+      // cells, tearing the hint down here would delete the element we are about to
+      // anchor the editor to.
+      if (!opts.keepHint
+        && !(opts.host && this._hint && this._hint.added.includes(opts.host))) {
+        this.clearCellHint();
+      }
+      this.commit();
+
+      const all = this.lines();
+      let range;
+      let src;
+
+      if (spec && Array.isArray(spec.rect) && spec.rect.length) {
+        // Rectangular region: one source line per visual row of a merged cell.
+        const parts = spec.rect;
+        for (const part of parts) if (all[part.line] === undefined) return;
+        range = { start: parts[0].line, end: parts[parts.length - 1].line, rect: parts };
+        src = parts.map((p) => (all[p.line] || '').slice(p.col[0], p.col[1])).join('\n');
+      } else if (spec && Array.isArray(spec.col)) {
+        const text = all[spec.line];
+        if (text === undefined) return;
+        range = { start: spec.line, end: spec.line, col: spec.col.slice() };
+        src = text.slice(spec.col[0], spec.col[1]);
+      } else if (spec && Array.isArray(spec.lines)) {
+        const [a, b] = spec.lines;
+        if (a > b) {
+          // An empty body (``` immediately followed by ```): insert at `a`.
+          range = { start: a, end: a - 1 };
+          src = '';
+        } else {
+          range = { start: a, end: b };
+          src = all.slice(a, b + 1).join('\n');
+        }
+      } else {
+        return;
+      }
+
+      this.revealAncestors(opts.host || block);
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'typora-editing typora-partial'
+        + (opts.variant ? ` typora-${opts.variant}` : '');
+
+      const ta = document.createElement('textarea');
+      ta.className = 'typora-block-input';
+      if (opts.variant === 'code') ta.classList.add('typora-code-input');
+      if (opts.variant === 'cell' || opts.variant === 'title') {
+        ta.classList.add('typora-inline-input');
+      }
+      ta.value = src;
+      ta.spellcheck = false;
+      if (opts.placeholder) ta.placeholder = opts.placeholder;
+      wrapper.appendChild(ta);
+
+      // Anchor the editor over the sub-element the user clicked, so a cell editor
+      // appears in the cell rather than above the whole table.
+      const host = opts.host || block;
+      const marker = document.createComment('typora-partial');
+      let prevDisplay = host.style.display;
+      let hostParked = null;
+      let hostWidth = null;
+
+      if (opts.overlay) {
+        // Overlay mode: the document keeps its normal rendering and the editor floats
+        // over the clicked spot. Used for a marker inside a merged cell, where the
+        // surrounding table must stay merged while one position is edited.
+        wrapper.classList.add('typora-overlay');
+        const box = this.previewEl.getBoundingClientRect();
+        wrapper.style.top = `${opts.overlay.top - box.top + this.previewEl.scrollTop}px`;
+        wrapper.style.left = `${opts.overlay.left - box.left + this.previewEl.scrollLeft}px`;
+        wrapper.style.width = `${Math.max(opts.overlay.width, 48)}px`;
+        wrapper.style.height = `${opts.overlay.height}px`;
+        this.previewEl.appendChild(wrapper);
+      } else if (opts.inHost) {
+        // Edit *inside* the host element rather than beside it. A <td> may only
+        // contain flow content, so injecting the editor as a sibling inside the <tr>
+        // dropped it out of the table layout and stretched it across the row.
+        // Park the host's own children (the marker glyph) instead of relying on CSS
+        // to collapse them: table cells carry font rules from several selectors and
+        // the stray character kept showing above the input.
+        const parked = document.createDocumentFragment();
+        // Freeze the cell at the width it already had. A <textarea> reports a wide
+        // default intrinsic size, and in a table that propagates to the whole column:
+        // the edited column stretched and its neighbours were crushed to zero.
+        const hostRect = host.getBoundingClientRect();
+        hostWidth = host.style.width;
+        if (hostRect.width) host.style.width = `${Math.round(hostRect.width)}px`;
+        while (host.firstChild) parked.appendChild(host.firstChild);
+        hostParked = parked;
+        host.appendChild(marker);
+        host.appendChild(wrapper);
+        host.classList.add('typora-host-editing');
+      } else {
+        host.parentNode.insertBefore(marker, host);
+        host.parentNode.insertBefore(wrapper, host);
+        // A class, not an inline style: `.luogu-code-pre code` is `display:block
+        // !important`, so hiding a <pre> inline still left its highlighted code
+        // visible below the editor.
+        host.classList.add('typora-hidden');
+      }
+
+      this.openBlock = {
+        wrapper, textarea: ta, block: opts.keepHost ? null : host, marker, range,
+        partial: true, prevDisplay,
+        // Host stays visible in inHost mode, so it is not `block`; keep a separate
+        // handle so commit() can restore what it was holding.
+        hostEl: host, hostParked, hostWidth,
+      };
+
+      const grow = () => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; };
+      grow();
+      ta.addEventListener('input', grow);
+      ta.addEventListener('blur', () => this.commit());
+      ta.focus();
+      ta.selectionStart = ta.selectionEnd = ta.value.length;
+    }
+
+    /**
+     * A block inside a collapsed <details> cannot receive focus, and a textarea that
+     * never focuses fires blur immediately — committing and closing itself before the
+     * user can type. Open every ancestor first.
+     */
+    revealAncestors(el) {
+      // A <summary> is visible whether or not its box is open, so an editor hosted
+      // there needs no reveal. Force-opening it here silently un-folded the box the
+      // moment you clicked its title to rename it.
+      const ownSummary = el.closest && el.closest('.luogu-callout-summary');
+      let from = el.closest('details');
+      if (ownSummary && from && ownSummary.parentElement === from) {
+        from = from.parentElement && from.parentElement.closest('details');
+      }
+      for (let d = from; d; d = d.parentElement && d.parentElement.closest('details')) {
+        if (!d.open) d.open = true;
+      }
+    }
+
+    open(block) {
+      this.commit();
+
+      const range = this.rangeOf(block, this.anchorList());
+      if (!range) return;
+      this.revealAncestors(block);
+
+      const all = this.lines();
+      const src = all.slice(range.start, range.end + 1).join('\n');
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'typora-editing';
+
+      const ta = document.createElement('textarea');
+      ta.className = 'typora-block-input';
+      ta.value = src;
+      ta.spellcheck = false;
+      wrapper.appendChild(ta);
+
+      // A marker keeps the block's position while it is swapped out, so committing can
+      // put the re-rendered document back without guessing where this block belonged.
+      const marker = document.createComment('typora-block');
+      block.parentNode.insertBefore(marker, block);
+      block.parentNode.insertBefore(wrapper, block);
+      block.style.display = 'none';
+
+      this.openBlock = { wrapper, textarea: ta, block, marker, range };
+
+      const grow = () => {
+        ta.style.height = 'auto';
+        ta.style.height = ta.scrollHeight + 'px';
+      };
+      grow();
+      ta.addEventListener('input', grow);
+      ta.addEventListener('blur', () => this.commit());
+
+      ta.focus();
+      ta.selectionStart = ta.selectionEnd = ta.value.length;
+    }
+
+    /** Fold the open block back into rendered HTML, writing its text into the source. */
+    commit() {
+      const open = this.openBlock;
+      if (!open) return;
+      this.openBlock = null;               // guard against re-entry via blur
+
+      const next = open.textarea.value;
+      const all = this.lines();
+      const rect = open.range.rect;
+      const col = open.range.col;
+      // For an insertion the range is empty (end === start - 1), so this slice is ''.
+      const prev = rect
+        ? rect.map((p) => (all[p.line] || '').slice(p.col[0], p.col[1])).join('\n')
+        : col
+          ? (all[open.range.start] || '').slice(col[0], col[1])
+          : (open.inserting ? '' : all.slice(open.range.start, open.range.end + 1).join('\n'));
+
+      // Clean up the DOM swap regardless of whether anything changed. A hint that is
+      // still standing (the editor was hosted by one of its revealed cells) must go
+      // too, otherwise the un-merged skeleton would outlive the edit.
+      // Detach the editor *before* tearing the hint down: in inHost mode the wrapper
+      // lives inside one of the hint's ghost cells, and clearing the hint first would
+      // delete that cell with the editor still in it.
+      if (open.wrapper.parentNode) open.wrapper.parentNode.removeChild(open.wrapper);
+      if (open.marker.parentNode) open.marker.parentNode.removeChild(open.marker);
+      if (open.hostEl) {
+        open.hostEl.classList.remove('typora-host-editing');
+        if (open.hostWidth !== null && open.hostWidth !== undefined) {
+          open.hostEl.style.width = open.hostWidth;
+        }
+        // Put the original cell content back; a re-render replaces it anyway when
+        // the text changed, but an unchanged cell must not be left empty.
+        if (open.hostParked) open.hostEl.appendChild(open.hostParked);
+      }
+      this.clearCellHint();
+      if (open.block) {
+        open.block.classList.remove('typora-hidden');
+        open.block.style.display = open.prevDisplay || '';
+      }
+
+      if (next === prev) return;           // nothing to do; keep the DOM as-is
+
+      // Abandoning an empty new paragraph must not dirty the document — otherwise a
+      // stray click in the margin would push a no-op onto the undo stack and mark the
+      // file changed.
+      if (open.inserting && next.trim() === '') return;
+
+      // A merged cell writes each of its rows back into that row's own column span.
+      // Pipes are NOT escaped here: the whole point of this editor is to let the
+      // author retype the `<` / `^` markers and the bars that separate them.
+      if (rect) {
+        const rows = next.split('\n');
+        for (let k = 0; k < rect.length; k++) {
+          const p = rect[k];
+          const line = all[p.line] || '';
+          // Surplus lines are folded into the last row so a stray Enter cannot add
+          // table rows and desync the merge from its neighbours.
+          const text = (k === rect.length - 1 ? rows.slice(k) : [rows[k]])
+            .filter((x) => x !== undefined)
+            .join(' ');
+          all[p.line] = line.slice(0, p.col[0]) + text + line.slice(p.col[1]);
+        }
+        this.editor.setContent(all.join('\n'));
+        return;
+      }
+
+      // A column slice rewrites one line in place: splice the new text between the
+      // untouched head and tail so neighbouring cells / fence syntax survive verbatim.
+      if (col) {
+        const line = all[open.range.start] || '';
+        // A cell must not contain a raw pipe or newline; either would silently
+        // restructure the table rather than edit it.
+        const safe = next.replace(/[\r\n]+/g, ' ').replace(/\|/g, '\\|');
+        all[open.range.start] = line.slice(0, col[0]) + safe + line.slice(col[1]);
+        this.editor.setContent(all.join('\n'));
+        return;
+      }
+
+      const replaceCount = open.range.end - open.range.start + 1;
+      const payload = next.split('\n');
+      if (open.inserting) {
+        // Keep the new block separated from its neighbours by a blank line, or the
+        // paragraph would be glued onto the previous one by the Markdown parser.
+        const prevLine = all[open.range.start - 1];
+        const nextLine = all[open.range.start];
+        if (prevLine !== undefined && prevLine.trim() !== '') payload.unshift('');
+        if (nextLine !== undefined && nextLine.trim() !== '') payload.push('');
+      }
+      all.splice(open.range.start, replaceCount, ...payload);
+      // setContent runs the normal pipeline: history, re-render, line numbers, autosave.
+      this.editor.setContent(all.join('\n'));
+    }
+
+    _onKeyDown(e) {
+      if (!this.active || !this.openBlock) return;
+      const ta = this.openBlock.textarea;
+      if (e.target !== ta) return;
+
+      // Tab indents inside the editor instead of moving focus. Without this a Tab in
+      // a code block blurs the textarea, which commits and closes it — making it
+      // impossible to type indented code, the single most common thing to write here.
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        e.stopPropagation();
+        const s = ta.selectionStart;
+        const en = ta.selectionEnd;
+        const val = ta.value;
+        const lineStart = val.lastIndexOf('\n', s - 1) + 1;
+
+        if (e.shiftKey) {
+          // Outdent every line touched by the selection.
+          const endLine = val.indexOf('\n', en);
+          const tail = endLine === -1 ? val.length : endLine;
+          const seg = val.slice(lineStart, tail);
+          let removedFirst = 0;
+          let removedTotal = 0;
+          const out = seg.split('\n').map((ln, idx) => {
+            const m = ln.match(/^( {1,4}|\t)/);
+            if (!m) return ln;
+            if (idx === 0) removedFirst = m[1].length;
+            removedTotal += m[1].length;
+            return ln.slice(m[1].length);
+          }).join('\n');
+          ta.value = val.slice(0, lineStart) + out + val.slice(tail);
+          ta.selectionStart = Math.max(lineStart, s - removedFirst);
+          ta.selectionEnd = Math.max(lineStart, en - removedTotal);
+        } else if (s !== en) {
+          // Indent the whole selection, keeping it selected.
+          const endLine = val.indexOf('\n', en);
+          const tail = endLine === -1 ? val.length : endLine;
+          const seg = val.slice(lineStart, tail);
+          const out = seg.split('\n').map((ln) => '    ' + ln).join('\n');
+          ta.value = val.slice(0, lineStart) + out + val.slice(tail);
+          ta.selectionStart = s + 4;
+          ta.selectionEnd = en + 4 * seg.split('\n').length;
+        } else {
+          ta.value = val.slice(0, s) + '    ' + val.slice(en);
+          ta.selectionStart = ta.selectionEnd = s + 4;
+        }
+        ta.dispatchEvent(new Event('input', { bubbles: true }));
+        return;
+      }
+
+      // Escape and Ctrl/Cmd+Enter fold the block. Plain Enter must stay available for
+      // multi-line blocks (lists, code, tables), so it is deliberately not bound.
+      if (e.key === 'Escape' || ((e.ctrlKey || e.metaKey) && e.key === 'Enter')) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.commit();
+        this.previewEl.focus();
+      }
+    }
+  }
+
+  global.LuoguTypora = LuoguTypora;
+  if (typeof window !== 'undefined') window.LuoguTypora = LuoguTypora;
+  if (typeof module !== 'undefined' && module.exports) module.exports = { LuoguTypora };
+})(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this));

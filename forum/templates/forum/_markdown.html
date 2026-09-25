@@ -1,0 +1,21 @@
+{% comment %}
+  已发布 Markdown 的统一渲染容器。
+
+  服务端渲染的 content_html（markdown-it + bleach）先放进去做兜底，
+  脚本就绪后由 luogu-render.js 用**与编辑器预览同一个解析器**重渲染，
+  这样「预览看到的」和「发布后看到的」不会有两套排版。
+
+  用法：
+    {% include 'forum/_markdown.html' with markdown=post.content fallback_html=post.content_html extra_class='mb-4' %}
+
+  参数：
+    markdown      原始 Markdown（会写进 data 属性，Django 转义后放在双引号里是安全的）
+    fallback_html 服务端渲染结果，仅作无脚本兜底
+    extra_class   追加到容器上的类名，可选
+{% endcomment %}
+<div
+  class="lmd-root lmd-content{% if extra_class %} {{ extra_class }}{% endif %}"
+  data-luogu-markdown="{{ markdown }}"
+>
+  <div class="preview-content lmd-fallback">{{ fallback_html|safe }}</div>
+</div>
