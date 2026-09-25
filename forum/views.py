@@ -24,6 +24,7 @@ from forum.api import UserRegistrationSerializer
 from .utils import send_group_notification
 from forum.form import MDEditorCommentForm, MDEditorModelForm, CollectionForm, ProfileForm
 from forum.models import Comment, Item, Post, Rating, Collection, CollectionPost, Profile
+from forum.search import search_posts
 from forum.bots_manager import manager
 
 # Create your views here.
@@ -45,12 +46,9 @@ class PostListView(ListView):
         return context
 
     def get_queryset(self):
-       query = self.request.GET.get("q", "").strip()
-       if not query:
-           return Post.objects.all()
-       return Post.objects.filter(
-           Q(title__icontains=query) | Q(content__icontains=query)
-       )
+        # 帖子搜索走 FTS5；查询太短或索引不可用时，search_posts 内部自动回退 LIKE。
+        # 结果集与排序都和原来的 icontains 版本一致，只是更快。
+        return search_posts(self.request.GET.get('q', ''))
 
 @login_required
 def rate_item(request, item_id):
