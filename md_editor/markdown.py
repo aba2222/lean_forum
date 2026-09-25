@@ -31,14 +31,21 @@ class MarkdownModel(models.Model):
         "blockquote","b", "i", "strong", "em", "a", "p", "ul", "ol", "li",
         "code", "pre", "h1", "h2", "h3", "h4", "h5", "h6", "hr", "img",
         "table", "thead", "tr", "th", "tbody", "td", "sup", "dt", "dd", "dl",
-        "abbr", "div", "span", "br"
+        "abbr", "div", "span", "br",
+        # 音频播放器。编辑器里插入的是 <audio controls src="...">，
+        # 不放行的话这段 HTML 会被 bleach 整段剥掉，发布后什么都看不到。
+        "audio", "source",
     ]
 
     allowed_attrs = {
         "a": ["href", "title"],
         "img": ["src", "alt", "title"],
         "div": ["class"],
-        "span": ["class"]
+        "span": ["class"],
+        # audio 只留播放本身需要的属性：src / controls / 预加载策略 / 循环。
+        # 不放 autoplay —— 正文里自动播放是很糟的体验。
+        "audio": ["src", "controls", "preload", "loop", "muted", "title"],
+        "source": ["src", "type"],
     }
 
     ALLOWED_PROTOCOLS = ["http", "https", "mailto"]

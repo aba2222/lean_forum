@@ -1,6 +1,6 @@
 {% load static %}
 
-<div id="{{ id }}">
+<div id="{{ id }}" data-md-editor-scope>
   <div
     class="md_editor"
     data-name="{{ name }}"
@@ -8,6 +8,26 @@
     data-image-upload-to="{% url 'upload_view' %}"
   ></div>
 
+  <div
+    class="md_editor-audio-bar d-flex align-items-center gap-2 mt-2"
+    data-upload-to="{% url 'upload_view' %}"
+  >
+    <button type="button" class="btn btn-sm btn-outline-secondary md_editor-audio-button">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+        <path d="M14.5 1.5a.5.5 0 0 0-.61-.49l-8 2A.5.5 0 0 0 5.5 3.5v7.55a3.5 3.5 0 1 0 1 2.45V4.28l7-1.75z"/>
+      </svg>
+      <span class="ms-1">插入音频</span>
+    </button>
+    <input
+      type="file"
+      class="md_editor-audio-input"
+      accept="audio/mpeg,audio/ogg,audio/opus,audio/wav,audio/mp4,audio/x-m4a,audio/aac,audio/flac,audio/*"
+      hidden
+    />
+    <span class="md_editor-audio-status small text-muted" role="status" aria-live="polite"></span>
+  </div>
+
   <script type="module" src="{% static 'md_editor/index.js' %}"></script>
   <link rel="stylesheet" href="{% static 'md_editor/index.css' %}" />
+  <script src="{% static 'md_editor/audio-upload.js' %}"></script>
 </div>
