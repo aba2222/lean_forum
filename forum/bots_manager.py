@@ -41,6 +41,11 @@ class BotsManager():
             except (Post.DoesNotExist, User.DoesNotExist):
                 # 帖子已被删除或机器人账号不存在，静默跳过
                 return
+            # 同一个机器人对同一个帖子只回一次同样的内容。
+            # 被 @ 两次、handler 超时重试、线程重复启动都会走到这里，
+            # 原来每次都是一个裸 create，于是出现两条一模一样的回复。
+            if Comment.objects.filter(post=post, author=author, content=message).exists():
+                return
             Comment.objects.create(
                 post=post,
                 author=author,

@@ -1,5 +1,6 @@
 from .models import Post, Comment, Collection, Profile
 from .avatars import normalize_avatar, delete_avatar_file
+from .submit_guard import FORM_FIELD_NAME, new_submit_token
 
 from django import forms
 from django.core.files.uploadedfile import UploadedFile
@@ -8,9 +9,14 @@ import re
 BIO_MAX_LENGTH = 200
 
 class MDEditorModelForm(forms.ModelForm):
+    #: 一次性令牌，用于识别「同一个表单被提交了两次」，见 forum/submit_guard.py
+    submit_token = forms.CharField(required=False, widget=forms.HiddenInput)
+
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.user = user
+        if not self.is_bound:
+            self.fields[FORM_FIELD_NAME].initial = new_submit_token()
 
     class Meta:
         model = Post
@@ -22,7 +28,9 @@ class MDEditorModelForm(forms.ModelForm):
     
     def clean_content(self):
         content = self.cleaned_data["content"]
-        mentions = re.findall(r'@(\w+)', content)
+        # 去重：同一段内容里 @ 同一个机器人两次，原来会起两个线程，
+        # 同一条帖子下面就会出现两条一模一样的机器人回复
+        mentions = list(dict.fromkeys(re.findall(r'@(\w+)', content)))
         self.cleaned_data["mentions"] = mentions
         return content
     
@@ -62,10 +70,15 @@ class CollectionForm(forms.ModelForm):
 
 # TODO: support @xxx
 class MDEditorCommentForm(forms.ModelForm):
+    #: 一次性令牌，见 forum/submit_guard.py
+    submit_token = forms.CharField(required=False, widget=forms.HiddenInput)
+
     def __init__(self, *args, user=None, post=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.user = user
         self.post = post
+        if not self.is_bound:
+            self.fields[FORM_FIELD_NAME].initial = new_submit_token()
 
     class Meta:
         model = Comment

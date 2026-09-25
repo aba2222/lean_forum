@@ -7,6 +7,7 @@ from django.template import Context, Template
 
 import io
 import os
+import re
 import shutil
 import tempfile
 
@@ -211,6 +212,123 @@ class ForumTests(TestCase):
         self.assertEqual(User.objects.filter(username='newuser2').count(), 1)
         new_user = User.objects.get(username='newuser2')
         self.assertTrue(new_user.check_password('pw1'))
+
+
+class DuplicateSubmitTests(TestCase):
+    """一次提交不应该产生多条相同的帖子/评论。"""
+
+    def setUp(self):
+        self.username = 'dupeuser'
+        self.password = 'pass12345'
+        self.user = User.objects.create_user(self.username, password=self.password)
+        self.client.login(username=self.username, password=self.password)
+
+    def token_from(self, url):
+        """从渲染出来的页面里取一次性令牌。"""
+        html = self.client.get(url).content.decode()
+        match = re.search(r'name="submit_token" value="([^"]+)"', html)
+        self.assertIsNotNone(match, '页面里没有 submit_token 隐藏字段')
+        return match.group(1)
+
+    def test_create_page_issues_a_fresh_token_each_render(self):
+        first = self.token_from(reverse('post_create'))
+        second = self.token_from(reverse('post_create'))
+
+        self.assertTrue(first)
+        self.assertNotEqual(first, second)
+
+    def test_same_token_posted_twice_creates_only_one_post(self):
+        """同一个表单连着提交两次（双击 / 刷新重发）只落一条。"""
+        url = reverse('post_create')
+        data = {
+            'title': '重复提交',
+            'content': '同样的内容',
+            'submit_token': self.token_from(url),
+        }
+
+        self.client.post(url, data)
+        self.client.post(url, data)
+
+        self.assertEqual(Post.objects.filter(title='重复提交').count(), 1)
+
+    def test_a_fresh_token_still_allows_a_second_post(self):
+        """令牌只挡「同一个表单重复提交」，不挡用户真的想再发一条。"""
+        url = reverse('post_create')
+        for _ in range(2):
+            self.client.post(url, {
+                'title': '两条',
+                'content': '同样的内容',
+                'submit_token': self.token_from(url),
+            })
+
+        self.assertEqual(Post.objects.filter(title='两条').count(), 2)
+
+    def test_same_token_comment_posted_twice_creates_only_one_comment(self):
+        post = Post.objects.create(author=self.user, title='t', content='c')
+        url = reverse('post_detail', kwargs={'post_id': post.id})
+        data = {'content': 'nice', 'submit_token': self.token_from(url)}
+
+        self.client.post(url, data)
+        self.client.post(url, data)
+
+        self.assertEqual(Comment.objects.count(), 1)
+
+    def test_submissions_without_a_token_are_still_accepted(self):
+        """老页面 / 第三方客户端没有令牌，不能因此被挡住。"""
+        url = reverse('post_create')
+        self.client.post(url, {'title': '无令牌', 'content': 'x'})
+
+        self.assertEqual(Post.objects.filter(title='无令牌').count(), 1)
+
+    def test_repeated_mentions_are_deduplicated(self):
+        """内容里 @ 同一个机器人两次，只能算一次。
+
+        原来 re.findall 不去重，视图会对每个出现各起一个线程，
+        同一条帖子下面就会出现两条一模一样的机器人回复。
+        """
+        from .form import MDEditorModelForm
+
+        form = MDEditorModelForm(
+            data={'title': 't', 'content': 'hello @bot and again @bot'},
+            user=self.user,
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data['mentions'], ['bot'])
+
+    def test_bot_reply_is_not_posted_twice(self):
+        from .bots_manager import manager
+
+        post = Post.objects.create(author=self.user, title='t', content='c')
+        bot = User.objects.create_user('bot', password='x')
+
+        manager.send_comment(post.id, bot.id, '固定回复')
+        manager.send_comment(post.id, bot.id, '固定回复')
+
+        self.assertEqual(Comment.objects.filter(post=post, author=bot).count(), 1)
+
+    def test_api_rejects_a_duplicate_post(self):
+        url = reverse('post-list')
+        payload = {'title': 'API 重复', 'content': 'same'}
+
+        first = self.client.post(url, payload, content_type='application/json')
+        second = self.client.post(url, payload, content_type='application/json')
+
+        self.assertEqual(first.status_code, 201)
+        self.assertEqual(second.status_code, 409)
+        self.assertEqual(Post.objects.filter(title='API 重复').count(), 1)
+
+    def test_api_rejects_a_duplicate_comment(self):
+        post = Post.objects.create(author=self.user, title='t', content='c')
+        url = reverse('post-comments', kwargs={'pk': post.id})
+        payload = {'content': 'same'}
+
+        first = self.client.post(url, payload, content_type='application/json')
+        second = self.client.post(url, payload, content_type='application/json')
+
+        self.assertEqual(first.status_code, 201)
+        self.assertEqual(second.status_code, 409)
+        self.assertEqual(Comment.objects.count(), 1)
 
 
 class AvatarHelperTests(TestCase):
