@@ -25,6 +25,7 @@ from .utils import send_group_notification
 from forum.form import MDEditorCommentForm, MDEditorModelForm, CollectionForm, ProfileForm
 from forum.models import Comment, Item, Post, Rating, Collection, CollectionPost, Profile
 from forum.bots_manager import manager
+from .submit_guard import DUPLICATE_MESSAGE, FORM_FIELD_NAME, claim_submit_token
 
 # Create your views here.
 
@@ -79,6 +80,11 @@ def post_create(request):
     if request.method == 'POST':
         forms = MDEditorModelForm(request.POST, user=request.user)
         if forms.is_valid():
+            if not claim_submit_token(request.session, forms.cleaned_data.get(FORM_FIELD_NAME)):
+                # 同一个表单被提交了不止一次（双击 / 刷新 / 重试），不重复发帖
+                messages.info(request, DUPLICATE_MESSAGE)
+                return redirect('post_list')
+
             post = forms.save()
 
             mentions = forms.cleaned_data.get("mentions", [])
@@ -120,6 +126,9 @@ class PostDetailView(View):
             forms.user = request.user
             forms.post = post
             if forms.is_valid():
+                if not claim_submit_token(request.session, forms.cleaned_data.get(FORM_FIELD_NAME)):
+                    messages.info(request, DUPLICATE_MESSAGE)
+                    return redirect('post_detail', post_id=post.id)
                 forms.save()
             else:
                 print(forms.errors)
@@ -397,6 +406,9 @@ def collection_post_detail(request, collection_id, post_id):
     if request.method == 'POST' and request.user.is_authenticated:
         forms = MDEditorCommentForm(request.POST, user=request.user, post=post)
         if forms.is_valid():
+            if not claim_submit_token(request.session, forms.cleaned_data.get(FORM_FIELD_NAME)):
+                messages.info(request, DUPLICATE_MESSAGE)
+                return redirect('collection_post_detail', collection_id=collection.id, post_id=post.id)
             forms.save()
         return redirect('collection_post_detail', collection_id=collection.id, post_id=post.id)
 

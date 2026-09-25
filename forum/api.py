@@ -1,4 +1,5 @@
 from .models import Post, Comment
+from .submit_guard import DUPLICATE_MESSAGE, recent_duplicate
 from rest_framework import routers, serializers, viewsets, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import AuthenticationFailed
@@ -72,6 +73,24 @@ class PostViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
 
+    def create(self, request, *args, **kwargs):
+        """同一作者短时间内提交完全相同的帖子时直接返回冲突，不再建行。
+
+        API 是无状态的（JWT），用不上网页那套表单令牌，所以这里按内容判断。
+        """
+        duplicate = recent_duplicate(
+            Post,
+            request.user,
+            title=str(request.data.get("title", "")),
+            content=str(request.data.get("content", "")),
+        )
+        if duplicate is not None:
+            return Response(
+                {"detail": DUPLICATE_MESSAGE, "id": duplicate.id},
+                status=status.HTTP_409_CONFLICT,
+            )
+        return super().create(request, *args, **kwargs)
+
     def destroy(self, request, *args, **kwargs):
         post = self.get_object()
         if not request.user.is_authenticated or post.author != request.user:
@@ -81,6 +100,18 @@ class PostViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="comments")
     def comments(self, request, pk=None):
         post = self.get_object()
+        duplicate = recent_duplicate(
+            Comment,
+            request.user,
+            post=post,
+            content=str(request.data.get("content", "")),
+        )
+        if duplicate is not None:
+            return Response(
+                {"detail": DUPLICATE_MESSAGE, "id": duplicate.id},
+                status=status.HTTP_409_CONFLICT,
+            )
+
         serializer = CommentCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save(author=request.user, post=post)
