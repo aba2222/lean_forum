@@ -213,6 +213,106 @@ class ForumTests(TestCase):
         self.assertTrue(new_user.check_password('pw1'))
 
 
+class AudioUploadTests(TestCase):
+    """编辑器里的音频上传，以及发布后 <audio> 能不能活下来。"""
+
+    def setUp(self):
+        self.username = 'audiotester'
+        self.password = 'pass12345'
+        self.user = User.objects.create_user(self.username, password=self.password)
+        self.url = reverse('upload_view')
+
+    def audio_upload(self, name='clip.mp3', content_type='audio/mpeg', payload=b'ID3fake-audio'):
+        return SimpleUploadedFile(name, payload, content_type=content_type)
+
+    def test_upload_view_accepts_audio(self):
+        self.client.login(username=self.username, password=self.password)
+
+        response = self.client.post(self.url, {'file': self.audio_upload()})
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload['kind'], 'audio')
+        self.assertTrue(payload['url'].startswith(settings.MEDIA_URL))
+        self.assertTrue(payload['url'].endswith('.mp3'))
+
+    def test_upload_view_accepts_audio_under_the_legacy_field_name(self):
+        """老客户端把文件放在 image 这个字段里，音频也要能走通。"""
+        self.client.login(username=self.username, password=self.password)
+
+        response = self.client.post(self.url, {'image': self.audio_upload(name='a.ogg', content_type='audio/ogg')})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['kind'], 'audio')
+        self.assertTrue(response.json()['url'].endswith('.ogg'))
+
+    def test_upload_view_still_tags_images_as_images(self):
+        self.client.login(username=self.username, password=self.password)
+        image = SimpleUploadedFile('p.png', b'fake-png', content_type='image/png')
+
+        response = self.client.post(self.url, {'file': image})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['kind'], 'image')
+
+    def test_upload_view_rejects_unsupported_type(self):
+        self.client.login(username=self.username, password=self.password)
+        payload = SimpleUploadedFile('x.exe', b'MZ', content_type='application/octet-stream')
+
+        response = self.client.post(self.url, {'file': payload})
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()['error'], 'unsupported file type')
+
+    def test_upload_view_rejects_mismatched_extension(self):
+        """内容类型说是音频，扩展名却是可执行文件——两边都要对得上。"""
+        self.client.login(username=self.username, password=self.password)
+        payload = SimpleUploadedFile('x.exe', b'MZ', content_type='audio/mpeg')
+
+        response = self.client.post(self.url, {'file': payload})
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_upload_view_rejects_oversize_audio(self):
+        from md_editor.views import MAX_AUDIO_BYTES
+
+        self.client.login(username=self.username, password=self.password)
+        payload = self.audio_upload(payload=b'ID3' + b'\0' * (MAX_AUDIO_BYTES + 1 - 3))
+
+        response = self.client.post(self.url, {'file': payload})
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()['error'], 'too large')
+        self.assertEqual(response.json()['limit'], MAX_AUDIO_BYTES)
+
+    def test_audio_player_survives_markdown_rendering(self):
+        rendered = Post(title='t', content='c').markdown_render(
+            '<audio controls preload="metadata" src="/media/2026/09/a.mp3"></audio>'
+        )
+
+        self.assertIn('<audio', rendered)
+        self.assertIn('controls', rendered)
+        self.assertIn('src="/media/2026/09/a.mp3"', rendered)
+
+    def test_audio_autoplay_and_event_handlers_are_stripped(self):
+        """放行 <audio> 不等于放行它身上的任何东西。"""
+        rendered = Post(title='t', content='c').markdown_render(
+            '<audio controls autoplay onerror="alert(1)" src="/media/a.mp3"></audio>'
+        )
+
+        self.assertIn('<audio', rendered)
+        self.assertNotIn('autoplay', rendered)
+        self.assertNotIn('onerror', rendered)
+
+    def test_markdown_editor_offers_audio_upload(self):
+        self.client.login(username=self.username, password=self.password)
+
+        response = self.client.get(reverse('profile_edit'))
+
+        self.assertContains(response, 'md_editor-audio-button')
+        self.assertContains(response, 'audio-upload.js')
+
+
 class AvatarHelperTests(TestCase):
     """默认字母头像的配色/首字，以及头像压缩归一化。"""
 

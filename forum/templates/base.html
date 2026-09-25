@@ -75,6 +75,21 @@
         padding: 45px;
       }
 
+      /* 正文里的音频播放器：默认宽度是固定的，窄屏上会溢出，
+         而且和上下文的间距是 0，贴着段落很难看 */
+      .markdown-body audio {
+        display: block;
+        width: 100%;
+        max-width: 560px;
+        margin: 0.75rem 0;
+        vertical-align: middle;
+      }
+
+      /* 编辑器里插入音频那一行要跟编辑器宽度对齐 */
+      .md_editor-audio-bar {
+        min-height: 2rem;
+      }
+
       .page-shell {
         min-height: calc(100vh - 8rem);
       }
