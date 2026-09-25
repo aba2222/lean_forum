@@ -10,14 +10,7 @@
   {% endif %}
 
   <p class="text-muted d-flex align-items-center gap-2 flex-wrap">
-    <a
-      class="d-inline-flex align-items-center gap-2 text-decoration-none text-muted"
-      href="{% url 'profile' collection.owner.username %}"
-      title="查看 {{ collection.owner.username }} 的主页"
-    >
-      {% avatar collection.owner 24 %}
-      <span>{{ collection.owner.username }}</span>
-    </a>
+    {% user_link collection.owner 24 "d-inline-flex align-items-center gap-2 text-decoration-none text-muted" %}
     <small>· {{ collection.created_at|date:"Y-m-d" }}</small>
   </p>
 
@@ -43,11 +36,7 @@
             >{{ cp.post.title }}</a
           >
           <small class="text-muted ms-2"
-            ><a
-              class="text-decoration-none text-muted"
-              href="{% url 'profile' cp.post.author.username %}"
-              >{{ cp.post.author.username }}</a
-            ></small
+            >{% user_link cp.post.author "text-decoration-none text-muted" %}</small
           >
         </div>
         <small class="text-muted">{{ cp.post.created_at|date:"Y-m-d" }}</small>

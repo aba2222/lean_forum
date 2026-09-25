@@ -1,0 +1,11 @@
+{% load forum_extras %}{% if username %}
+  <a
+    class="user-link{% if css_class %} {{ css_class }}{% endif %}"
+    href="{% url 'profile' username %}"
+    data-user-card="{% url 'user_card' username %}"
+    title="查看 {{ username }} 的主页"
+    >{% if size %}{% avatar user size %}{% endif %}<span class="user-link-name">{{ username }}</span></a
+  >
+{% else %}
+  <span class="text-muted">匿名用户</span>
+{% endif %}

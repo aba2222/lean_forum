@@ -1,10 +1,12 @@
+import html
 import re, random
 from django.db.models import F, Sum
 from django.db.models import Q
 from django.db import models as db_models
 from django.http import JsonResponse
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
 from django.utils import timezone
+from django.utils.html import strip_tags
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404, redirect, render
 from django.core.paginator import Paginator
@@ -21,6 +23,8 @@ from rest_framework.views import APIView
 
 
 from forum.api import UserRegistrationSerializer
+from .avatars import avatar_url, fallback_color, fallback_initial
+from .covers import cover_background
 from .utils import send_group_notification
 from forum.form import MDEditorCommentForm, MDEditorModelForm, CollectionForm, ProfileForm
 from forum.models import Comment, Item, Post, Rating, Collection, CollectionPost, Profile
@@ -479,6 +483,7 @@ def profile_view(request, username):
     return render(request, 'forum/profile.html', {
         'profile': profile,
         'profile_user': profile_user,
+        'cover_background': cover_background(profile_user),
         'tab': tab,
         'page_obj': page_obj,
         'stats': {
@@ -488,6 +493,40 @@ def profile_view(request, username):
             'views': posts.aggregate(total=Sum('views'))['total'] or 0,
         },
         'is_self': request.user.is_authenticated and request.user.pk == profile_user.pk,
+    })
+
+
+#: 名片里简介最多显示多少个字
+USER_CARD_BIO_LENGTH = 80
+
+
+def user_card_view(request, username):
+    """昵称悬停名片的 JSON。
+
+    只暴露个人主页上本来就公开的信息：头像、昵称、注册时间、发帖/评论数、
+    简介的**纯文本**（不返回渲染后的 HTML，避免把一段 HTML 塞进前端）。
+    邮箱、权限、最后登录时间这些一概不给。
+    """
+    card_user = get_object_or_404(User, username=username)
+    profile = getattr(card_user, 'profile', None)
+
+    bio = ''
+    if profile is not None and profile.content_html:
+        bio = html.unescape(strip_tags(profile.content_html)).strip()
+        if len(bio) > USER_CARD_BIO_LENGTH:
+            bio = bio[:USER_CARD_BIO_LENGTH].rstrip() + '…'
+
+    return JsonResponse({
+        'username': card_user.username,
+        'url': reverse('profile', kwargs={'username': card_user.username}),
+        'avatar_url': avatar_url(card_user),
+        'initial': fallback_initial(card_user.username),
+        'color': fallback_color(card_user.username),
+        'joined': card_user.date_joined.strftime('%Y-%m-%d'),
+        'bio': bio,
+        'posts': Post.objects.filter(author=card_user).count(),
+        'comments': Comment.objects.filter(author=card_user).count(),
+        'is_self': request.user.is_authenticated and request.user.pk == card_user.pk,
     })
 
 

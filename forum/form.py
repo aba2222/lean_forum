@@ -1,5 +1,6 @@
 from .models import Post, Comment, Collection, Profile
 from .avatars import normalize_avatar, delete_avatar_file
+from .covers import normalize_cover, delete_cover_file
 
 from django import forms
 from django.core.files.uploadedfile import UploadedFile
@@ -94,15 +95,17 @@ class ProfileForm(forms.ModelForm):
 
     class Meta:
         model = Profile
-        fields = ['avatar', 'content', 'website', 'location']
+        fields = ['avatar', 'cover', 'content', 'website', 'location']
         labels = {
             'avatar': '头像',
+            'cover': '主页背景',
             'content': '个人简介',
             'website': '个人网站',
             'location': '所在地',
         }
         help_texts = {
             'avatar': '支持 JPG / PNG / WebP，不超过 2 MB；会自动摆正方向并压缩到 512px 以内。',
+            'cover': '会显示在个人主页顶部。不超过 5 MB，过宽的图会自动缩到 1920px 以内。',
             'content': f'支持 Markdown，最多 {BIO_MAX_LENGTH} 字。',
         }
         widgets = {
@@ -111,6 +114,9 @@ class ProfileForm(forms.ModelForm):
             ),
             # content 沿用 md_editor 的 MDEditorWidget（MDTextFormField 自带），
             # 保证简介的 Markdown 编辑体验与发帖/评论完全一致
+            'cover': forms.ClearableFileInput(
+                attrs={'accept': 'image/png,image/jpeg,image/webp', 'class': 'form-control'}
+            ),
             'website': forms.URLInput(
                 attrs={
                     'class': 'form-control',
@@ -137,6 +143,14 @@ class ProfileForm(forms.ModelForm):
             return avatar
         return normalize_avatar(avatar)
 
+    def clean_cover(self):
+        cover = self.cleaned_data.get('cover')
+        # 和 clean_avatar 同一套三态判断：None 没换、False 清除、
+        # 其余非 UploadedFile 的是 Django 带回来的已有 FieldFile
+        if cover is None or cover is False or not isinstance(cover, UploadedFile):
+            return cover
+        return normalize_cover(cover)
+
     def clean_website(self):
         return (self.cleaned_data.get('website') or '').strip()
 
@@ -147,22 +161,31 @@ class ProfileForm(forms.ModelForm):
         # 注意：_post_clean 已经先把新文件塞进 self.instance.avatar 了，
         # 所以旧文件名必须回数据库取，不能读 instance。
         old_name = ''
+        old_cover = ''
         if self.instance.pk:
-            old_name = (
+            old = (
                 Profile.objects.filter(pk=self.instance.pk)
-                .values_list('avatar', flat=True)
+                .values('avatar', 'cover')
                 .first()
-                or ''
+                or {}
             )
+            old_name = old.get('avatar') or ''
+            old_cover = old.get('cover') or ''
 
-        # 头像被清空时 FileField 收到的是 False 这个哨兵值，
-        # 落库前统一收敛成「无头像」，避免把 False 写进字段
+        # 被清空时 FileField 收到的是 False 这个哨兵值，
+        # 落库前统一收敛成「无文件」，避免把 False 写进字段
         if self.cleaned_data.get('avatar') is False:
             self.instance.avatar = None
+        if self.cleaned_data.get('cover') is False:
+            self.instance.cover = None
 
         profile = super().save(commit=commit)
 
         new_name = profile.avatar.name if profile.avatar else ''
         if old_name and old_name != new_name:
             delete_avatar_file(old_name)
+
+        new_cover = profile.cover.name if profile.cover else ''
+        if old_cover and old_cover != new_cover:
+            delete_cover_file(old_cover)
         return profile

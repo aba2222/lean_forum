@@ -7,6 +7,8 @@ from django.contrib.auth.models import User
 from md_editor.markdown import MarkdownModel
 from md_editor.models import MDTextField
 
+from .covers import cover_upload_to
+
 # Create your models here.
 
 
@@ -33,6 +35,8 @@ class Profile(MarkdownModel):
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     avatar = models.ImageField('头像', upload_to=avatar_upload_to, blank=True, null=True)
+    #: 个人主页顶部的背景图；没上传时前端用按用户名生成的渐变兜底
+    cover = models.ImageField('主页背景', upload_to=cover_upload_to, blank=True, null=True)
     content = MDTextField(max_length=200, blank=True, verbose_name='个人简介')
     website = models.URLField('个人网站', max_length=200, blank=True)
     location = models.CharField('所在地', max_length=60, blank=True)

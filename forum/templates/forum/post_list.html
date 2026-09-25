@@ -13,10 +13,7 @@
     {% for item in page_obj %}
       <li>
         {{ item.title }} - 作者：
-        <a href="{% url 'profile' item.author.username %}" class="d-inline-flex align-items-center gap-1 text-decoration-none">
-          {% avatar item.author 20 %}
-          <span>{{ item.author.username }}</span>
-        </a>
+        {% user_link item.author 20 "d-inline-flex align-items-center gap-1 text-decoration-none" %}
         <small class="text-muted">
           <span>{% include 'forum/icons/eye.svg' %}</span>
           {{ item.views }}
