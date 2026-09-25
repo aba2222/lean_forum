@@ -37,6 +37,55 @@ def oversize_png():
     return raw + b'\0' * (AVATAR_MAX_BYTES + 1 - len(raw))
 
 
+def animated_image_bytes(fmt='GIF', frames=3, size=(800, 800), duration=137):
+    """生成一张真实的多帧图，左上角 1/4 是透明区域。
+
+    透明度要真的写进去（paste 一整块 alpha=0），否则「保留透明」的断言
+    在量化之后无论如何都会通过，测不出东西。
+    """
+    images = []
+    for index in range(frames):
+        # 每帧都要真的不一样：Pillow 的 GIF 编码器会跳过与上一帧内容相同的帧，
+        # 用重复帧造测试图会得到比预期少得多的 n_frames，测不出帧数上限。
+        shade = 30 + (index * 37) % 200
+        frame = Image.new('RGBA', size, (shade, 90, 200, 255))
+        frame.paste((0, 0, 0, 0), (0, 0, size[0] // 2, size[1] // 2))
+        offset = index % max(1, size[0] // 4)
+        frame.paste((250, 240, 20, 255), (offset, 0, offset + 6, 6))
+        images.append(frame)
+
+    buffer = io.BytesIO()
+    images[0].save(
+        buffer,
+        fmt,
+        save_all=True,
+        append_images=images[1:],
+        duration=duration,
+        loop=0,
+        disposal=2,
+    )
+    return buffer.getvalue()
+
+
+def upload_animated(name='avatar.gif', fmt='GIF', **kwargs):
+    content_type = 'image/gif' if fmt == 'GIF' else 'image/webp'
+    return SimpleUploadedFile(
+        name, animated_image_bytes(fmt=fmt, **kwargs), content_type=content_type
+    )
+
+
+def corner_alpha(image, steps=17):
+    """取左上角 1/4 区域的平均 alpha——多帧图用来判断透明有没有被压掉。"""
+    rgba = image.convert('RGBA')
+    width, height = rgba.size
+    samples = [
+        rgba.getpixel((x, y))[3]
+        for x in range(0, max(1, width // 4), steps)
+        for y in range(0, max(1, height // 4), steps)
+    ]
+    return sum(samples) / len(samples)
+
+
 class ForumTests(TestCase):
     def setUp(self):
         self.username = 'testuser'
@@ -262,6 +311,80 @@ class AvatarHelperTests(TestCase):
         with self.assertRaises(ValidationError):
             normalize_avatar(SimpleUploadedFile('big.png', payload, content_type='image/png'))
 
+    def test_normalize_keeps_gif_animation(self):
+        from .avatars import normalize_avatar
+
+        normalized = normalize_avatar(upload_animated(fmt='GIF', frames=4))
+
+        self.assertEqual(normalized.name, 'avatar.gif')
+        with Image.open(io.BytesIO(normalized.read())) as image:
+            self.assertEqual(image.format, 'GIF')
+            self.assertTrue(getattr(image, 'is_animated', False))
+            self.assertEqual(image.n_frames, 4)
+            self.assertLessEqual(max(image.size), AVATAR_MAX_EDGE)
+            image.seek(0)
+            # 每帧都要被缩放，而不是只缩放首帧
+            self.assertLessEqual(max(image.size), AVATAR_MAX_EDGE)
+
+    def test_normalize_keeps_webp_animation(self):
+        from .avatars import normalize_avatar
+
+        normalized = normalize_avatar(upload_animated(name='a.webp', fmt='WEBP', frames=3))
+
+        self.assertEqual(normalized.name, 'avatar.webp')
+        with Image.open(io.BytesIO(normalized.read())) as image:
+            self.assertEqual(image.format, 'WEBP')
+            self.assertTrue(getattr(image, 'is_animated', False))
+            self.assertEqual(image.n_frames, 3)
+            self.assertLessEqual(max(image.size), AVATAR_MAX_EDGE)
+
+    def test_normalize_keeps_transparency_in_animation(self):
+        """动图重编码后透明区域要还是透明的。
+
+        这里踩过一次坑：直接把 RGBA 帧 convert('P') 会把透明像素当成
+        不透明颜色一起量化掉，透明背景会变成一块实色。
+        """
+        from .avatars import normalize_avatar
+
+        normalized = normalize_avatar(upload_animated(fmt='GIF', frames=2))
+
+        with Image.open(io.BytesIO(normalized.read())) as image:
+            image.seek(0)
+            self.assertLess(corner_alpha(image), 16)
+
+    def test_normalize_single_frame_gif_is_treated_as_static(self):
+        """单帧 GIF 没有动画可保，应该退回静态分支存成 JPEG。"""
+        from .avatars import normalize_avatar
+
+        normalized = normalize_avatar(
+            SimpleUploadedFile('one.gif', image_bytes(fmt='GIF'), content_type='image/gif')
+        )
+
+        self.assertEqual(normalized.name, 'avatar.jpg')
+
+    def test_normalize_rejects_too_many_animated_frames(self):
+        from django.core.exceptions import ValidationError
+
+        from .avatars import ANIMATED_AVATAR_MAX_FRAMES, normalize_avatar
+
+        upload = upload_animated(frames=ANIMATED_AVATAR_MAX_FRAMES + 1, size=(64, 64))
+
+        with self.assertRaises(ValidationError) as ctx:
+            normalize_avatar(upload)
+        self.assertIn('帧', str(ctx.exception))
+
+    def test_normalize_still_rejects_oversize_static_gif(self):
+        """动图上限定得更松，但静态图仍然卡原来的 2 MB。"""
+        from django.core.exceptions import ValidationError
+
+        from .avatars import normalize_avatar
+
+        payload = image_bytes(size=(64, 64), fmt='GIF') + b'\0' * (AVATAR_MAX_BYTES + 1)
+        upload = SimpleUploadedFile('big.gif', payload, content_type='image/gif')
+
+        with self.assertRaises(ValidationError):
+            normalize_avatar(upload)
+
 
 class ProfileTests(TestCase):
     """个人主页 + 头像功能。"""
@@ -436,6 +559,38 @@ class ProfileTests(TestCase):
 
         with Image.open(profile.avatar.path) as image:
             self.assertLessEqual(max(image.size), AVATAR_MAX_EDGE)
+
+    def test_animated_gif_avatar_is_stored_as_gif(self):
+        """端到端：上传动图后落盘的是 .gif，而且动画还在。"""
+        resp = self.client.post(
+            reverse('profile_edit'),
+            {'content': '', 'website': '', 'location': '', 'avatar': upload_animated(frames=4)},
+        )
+        self.assertEqual(resp.status_code, 302)
+
+        profile = Profile.objects.get(user=self.user)
+        self.assertTrue(profile.avatar.name.endswith('.gif'), profile.avatar.name)
+        self.assertTrue(profile.avatar.name.startswith('avatars/u'))
+
+        with Image.open(profile.avatar.path) as image:
+            self.assertTrue(getattr(image, 'is_animated', False))
+            self.assertEqual(image.n_frames, 4)
+            self.assertLessEqual(max(image.size), AVATAR_MAX_EDGE)
+
+    def test_animated_avatar_renders_as_plain_img_tag(self):
+        """动图在页面上就是一个普通 <img>，不需要额外的前端改动。"""
+        self.client.post(
+            reverse('profile_edit'),
+            {'content': '', 'website': '', 'location': '', 'avatar': upload_animated(frames=3)},
+        )
+        profile = Profile.objects.get(user=self.user)
+        self.user.refresh_from_db()  # profile 关系可能还是旧的缓存
+
+        rendered = Template('{% load forum_extras %}{% avatar u 40 %}').render(
+            Context({'u': self.user})
+        )
+        self.assertIn('avatar-img', rendered)
+        self.assertIn(profile.avatar.url, rendered)
 
     def test_avatar_upload_rejects_non_image(self):
         resp = self.client.post(
