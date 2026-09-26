@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.core.management import call_command
 from django.test import TestCase, TransactionTestCase, override_settings
 from django.urls import reverse
 from django.contrib.auth.models import User
@@ -7,6 +8,7 @@ from django.template import Context, Template
 
 import io
 import os
+import re
 import shutil
 import tempfile
 
@@ -906,3 +908,75 @@ class SearchTests(TransactionTestCase):
         resp = self.client.get(reverse('post_list'), {'q': '最短路'})
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(len(resp.context['page_obj'].object_list), 1)
+
+
+class UploadLimitTests(TestCase):
+    """上传上限与反向代理该放行多少。
+
+    nginx 的 client_max_body_size 默认只有 1 MB，比本站任何一处上限都小，
+    所以大文件会在请求到达 Django 之前就被 413 挡掉 —— 这类问题只会在
+    部署之后才冒出来，而且应用侧看不到任何痕迹，只能靠文档和这个命令兜住。
+    """
+
+    def run_command(self):
+        out = io.StringIO()
+        call_command('upload_limits', stdout=out)
+        return out.getvalue()
+
+    def test_command_lists_every_upload_entry_point(self):
+        from .avatars import ANIMATED_AVATAR_MAX_BYTES, AVATAR_MAX_BYTES
+        from md_editor.views import MAX_AUDIO_BYTES, MAX_IMAGE_BYTES
+
+        output = self.run_command()
+
+        for size in (AVATAR_MAX_BYTES, ANIMATED_AVATAR_MAX_BYTES, MAX_IMAGE_BYTES, MAX_AUDIO_BYTES):
+            self.assertIn('%d MB' % (size // (1024 * 1024)), output)
+
+    def test_recommended_proxy_limit_covers_the_largest_upload(self):
+        from md_editor.views import MAX_AUDIO_BYTES
+
+        output = self.run_command()
+        match = re.search(r'client_max_body_size (\d+)m;', output)
+
+        self.assertIsNotNone(match, '命令里没有给出 client_max_body_size')
+        recommended = int(match.group(1)) * 1024 * 1024
+
+        # 反向代理必须放行到最大值以上，等于也不行（多段表单还有 boundary 等开销）
+        self.assertGreater(recommended, MAX_AUDIO_BYTES)
+
+    def test_audio_limit_is_what_makes_the_proxy_number_large(self):
+        """钉住「为什么 nginx 不能只放到 1m」这个前提。
+
+        如果哪天音频上限被拿掉，这条会失败，提醒去把文档里的说明一起改掉。
+        """
+        from md_editor.views import MAX_AUDIO_BYTES
+
+        self.assertGreater(MAX_AUDIO_BYTES, 1024 * 1024)
+
+    def test_profile_form_carries_the_limit_for_the_client_side_check(self):
+        """前端预检用的上限从后端传，不在模板里另写一份。"""
+        from .avatars import ANIMATED_AVATAR_MAX_BYTES
+        from .form import ProfileForm
+
+        widget = ProfileForm().fields['avatar'].widget
+        self.assertEqual(
+            widget.attrs.get('data-max-bytes'), str(ANIMATED_AVATAR_MAX_BYTES)
+        )
+
+
+class UploadTooLargePageTests(TestCase):
+    """编辑资料页要把上限带到前端，且提示位在。"""
+
+    def setUp(self):
+        self.username = 'limituser'
+        self.user = User.objects.create_user(self.username, password='pw123456')
+        self.client.login(username=self.username, password='pw123456')
+
+    def test_profile_edit_page_exposes_the_limit_and_a_hint_slot(self):
+        from .avatars import ANIMATED_AVATAR_MAX_BYTES
+
+        response = self.client.get(reverse('profile_edit'))
+
+        self.assertContains(response, 'data-max-bytes="%d"' % ANIMATED_AVATAR_MAX_BYTES)
+        self.assertContains(response, 'id="avatar-size-hint"')
+
