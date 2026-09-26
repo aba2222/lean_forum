@@ -77,6 +77,73 @@ python manage.py migrate
 gunicorn lean_forum.wsgi:application --bind 0.0.0.0:8000
 ```
 
+#### 反向代理：`client_max_body_size` 一定要调大
+
+**这是部署后最容易踩的一个坑。** nginx 的 `client_max_body_size` 默认只有
+**1 MB**，而本站的头像上限是 2 MB（GIF/WebP 动图 6 MB）、编辑器音频上限
+是 25 MB。请求体超限时，nginx 会在请求**到达 Django 之前**就返回
+`413 Request Entity Too Large` —— 应用侧完全不知情，用户只看到一张 nginx
+的错误页，表单里其它内容也一起丢了。
+
+先查出该配多少（它从代码里的真实常量读，不是文档里手抄的）：
+
+```bash
+python manage.py upload_limits
+```
+
+```
+应用接受的上传上限：
+  个人资料 · 头像（静态图）          2 MB
+  个人资料 · 头像（GIF/WebP 动图）  6 MB
+  编辑器 · 帖子/评论图片           10 MB
+  编辑器 · 帖子/评论音频           25 MB
+
+  # nginx
+  client_max_body_size 30m;
+```
+
+完整的最小可用配置：
+
+```nginx
+server {
+    listen 80;
+    server_name your-domain.example;
+
+    # 必须 ≥ 应用接受的最大上传体积（见上）；默认的 1 MB 会让头像/图片上传直接 413
+    client_max_body_size 30m;
+
+    # 交给 nginx 托管静态与上传文件时，记得把 SERVE_STATIC / SERVE_MEDIA 设为 0
+    location /static/ {
+        alias /path/to/lean_forum/staticfiles/;   # 先跑 collectstatic
+    }
+
+    location /media/ {
+        alias /path/to/lean_forum/uploads/;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+
+        # 应用要能从 X-Forwarded-For 里取到真实客户端 IP（见环境变量一节）
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+改完 `nginx -s reload` 即可。
+
+> 只调 `client_max_body_size` 还不够：`FORUM_TRUSTED_PROXY_COUNT` 也要按
+> 前面有几层反代设对，否则日志里的客户端 IP 会全是 nginx 那一台。
+
+#### 其它部署步骤
+
+```bash
+python manage.py collectstatic --noinput
+python manage.py build_search_index    # 建全文索引；不跑也行，第一次搜索会自动建
+```
+
 ## API 文档
 
 基于 Django REST Framework，提供只读 RESTful API（匿名可读，写操作需认证）。

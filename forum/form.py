@@ -1,5 +1,5 @@
 from .models import Post, Comment, Collection, Profile
-from .avatars import normalize_avatar, delete_avatar_file
+from .avatars import ANIMATED_AVATAR_MAX_BYTES, normalize_avatar, delete_avatar_file
 
 from django import forms
 from django.core.files.uploadedfile import UploadedFile
@@ -113,6 +113,10 @@ class ProfileForm(forms.ModelForm):
                 attrs={
                     'accept': 'image/png,image/jpeg,image/webp,image/gif',
                     'class': 'form-control',
+                    # 前端拿它做一次预检：超限的文件根本传不上去（请求会在
+                    # 反向代理那一层被 413 挡掉），不如选中时就明确告诉用户。
+                    # 值从后端传过去，避免两边各写死一份。
+                    'data-max-bytes': str(ANIMATED_AVATAR_MAX_BYTES),
                 }
             ),
             # content 沿用 md_editor 的 MDEditorWidget（MDTextFormField 自带），

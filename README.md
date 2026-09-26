@@ -71,6 +71,77 @@ python manage.py migrate
 gunicorn lean_forum.wsgi:application --bind 0.0.0.0:8000
 ```
 
+#### Reverse proxy: raise `client_max_body_size`
+
+**This is the easiest thing to trip over after deploying.** nginx defaults
+`client_max_body_size` to **1 MB**, while avatars go up to 2 MB (6 MB for
+animated GIF/WebP) and editor audio up to 25 MB. When the body exceeds the
+limit, nginx answers `413 Request Entity Too Large` **before the request ever
+reaches Django** — the app never sees it, the user just gets an nginx error
+page, and the rest of the form is lost too.
+
+Ask the project what the number should be (it reads the real constants, rather
+than a value copied into the docs):
+
+```bash
+python manage.py upload_limits
+```
+
+```
+应用接受的上传上限：
+  个人资料 · 头像（静态图）          2 MB
+  个人资料 · 头像（GIF/WebP 动图）  6 MB
+  编辑器 · 帖子/评论图片           10 MB
+  编辑器 · 帖子/评论音频           25 MB
+
+  # nginx
+  client_max_body_size 30m;
+```
+
+Minimal working config:
+
+```nginx
+server {
+    listen 80;
+    server_name your-domain.example;
+
+    # must be >= the largest upload the app accepts (see above);
+    # the 1 MB default makes avatar/image uploads fail with 413
+    client_max_body_size 30m;
+
+    # when nginx serves these, set SERVE_STATIC / SERVE_MEDIA to 0
+    location /static/ {
+        alias /path/to/lean_forum/staticfiles/;   # run collectstatic first
+    }
+
+    location /media/ {
+        alias /path/to/lean_forum/uploads/;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+
+        # so the app can see the real client IP (see the env var section)
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+Then `nginx -s reload`.
+
+> `client_max_body_size` alone is not enough: set `FORUM_TRUSTED_PROXY_COUNT` to
+> match how many proxies you have in front, or every client IP in the logs will
+> be nginx's own machine.
+
+#### Other deployment steps
+
+```bash
+python manage.py collectstatic --noinput
+python manage.py build_search_index    # optional; the first search builds it anyway
+```
+
 ## API
 
 Read-only RESTful API. Anonymous read access; write operations require authentication.
