@@ -35,7 +35,31 @@
 
 - Python 3.10+
 
-### 本地开发（推荐使用虚拟环境）
+### 本地开发：一条命令
+
+Windows 上直接双击 `dev.bat`，或者在 PowerShell 里：
+
+```powershell
+.\dev.ps1
+```
+
+它会从「刚 clone 下来什么都没有」一路做到「浏览器里能打开」：
+没虚拟环境就建（自动挑一个 3.10+ 的解释器，不会误用 PATH 上的旧版本）、
+依赖变了就装、生成并执行迁移，最后在 http://127.0.0.1:8000 起服务。
+
+```powershell
+.\dev.ps1 -Superuser        # 顺便建好后台账号（密码随机生成并打印）
+.\dev.ps1 -Port 9000 -Address 0.0.0.0   # 换端口，并允许局域网访问
+.\dev.ps1 -Test             # 只跑测试
+.\dev.ps1 -NoSetup          # 不碰环境，只用现有的启动
+```
+
+> 为什么要单独做这个脚本：这个仓库把 `migrations/` 放进了 `.gitignore`，
+> 刚 clone 下来一个迁移文件都没有，**必须先生成迁移**才能建表；
+> 而且 `DEBUG=1` 不设的话 `/static/` 下的编辑器资源全是 404。
+> 这两点都会让第一次跑起来的人卡住。
+
+### 手动步骤（其它平台，或者想知道每一步在做什么）
 
 ```bash
 # 克隆仓库
@@ -52,14 +76,19 @@ venv\Scripts\activate
 # 安装依赖
 pip install -r requirements.txt
 
-# 数据库迁移
-python manage.py makemigrations
+# 数据库迁移（注意要带上 app 名，原因见下）
+python manage.py makemigrations forum md_editor
 python manage.py migrate
 
 # 启动开发服务器
 export DEBUG=1
 python manage.py runserver
 ```
+
+> `makemigrations` 必须显式写上 `forum md_editor`。不带参数的
+> `makemigrations` 会**跳过连 `migrations` 目录都还不存在的 app**——
+> 而刚 clone 下来正是这种情况，结果就是 `forum` 一张表都不建，
+> 页面一访问就报 `no such table: forum_post`。
 
 访问 http://127.0.0.1:8000
 
