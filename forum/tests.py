@@ -376,21 +376,21 @@ class AvatarHelperTests(TestCase):
         self.assertEqual(fallback_initial(''), '?')
         self.assertEqual(fallback_initial(None), '?')
 
-    def test_normalize_shrinks_and_converts_to_jpeg(self):
+    def test_normalize_shrinks_and_converts_to_webp(self):
         from .avatars import normalize_avatar
 
         normalized = normalize_avatar(upload_image(size=(1200, 800)))
         image = Image.open(normalized)
-        self.assertEqual(image.format, 'JPEG')
+        self.assertEqual(image.format, 'WEBP')
         self.assertLessEqual(max(image.size), AVATAR_MAX_EDGE)
 
-    def test_normalize_keeps_transparency_as_png(self):
+    def test_normalize_keeps_transparency_as_webp(self):
         from .avatars import normalize_avatar
 
         normalized = normalize_avatar(
             upload_image(name='a.png', size=(600, 600), mode='RGBA', color=(0, 0, 0, 0))
         )
-        self.assertEqual(Image.open(normalized).format, 'PNG')
+        self.assertEqual(Image.open(normalized).format, 'WEBP')
 
     def test_normalize_rejects_non_image(self):
         from django.core.exceptions import ValidationError
@@ -453,14 +453,14 @@ class AvatarHelperTests(TestCase):
             self.assertLess(corner_alpha(image), 16)
 
     def test_normalize_single_frame_gif_is_treated_as_static(self):
-        """单帧 GIF 没有动画可保，应该退回静态分支存成 JPEG。"""
+        """单帧 GIF 没有动画可保，应该退回静态分支存成 WebP。"""
         from .avatars import normalize_avatar
 
         normalized = normalize_avatar(
             SimpleUploadedFile('one.gif', image_bytes(fmt='GIF'), content_type='image/gif')
         )
 
-        self.assertEqual(normalized.name, 'avatar.jpg')
+        self.assertEqual(normalized.name, 'avatar.webp')
 
     def test_normalize_rejects_too_many_animated_frames(self):
         from django.core.exceptions import ValidationError

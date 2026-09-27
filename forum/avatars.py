@@ -64,7 +64,7 @@ def fallback_initial(name):
 def is_animated_image(image):
     """是不是需要按动图处理。
 
-    单帧的 GIF 也走静态分支——重编码成 PNG/JPEG 更小，也没有动画可保。
+    单帧的 GIF 也走静态分支——重编码成 WebP 更小，也没有动画可保。
     """
     return bool(getattr(image, 'is_animated', False)) and getattr(image, 'n_frames', 1) > 1
 
@@ -151,7 +151,7 @@ def normalize_avatar(upload):
     - 限制原图大小（动图放宽到 ANIMATED_AVATAR_MAX_BYTES）；
     - 用 Pillow 真正解码一次，非图片文件直接拒绝；
     - 按 EXIF 方向摆正、等比缩到 AVATAR_MAX_EDGE 以内；
-    - 有透明通道的存 PNG，其余存 JPEG（质量 88 + 渐进式），避免动辄几 MB 的头像；
+    - 统一输出 WebP：透明图保留透明，非透明图压缩到更小体积；
     - GIF / WebP 多帧图逐帧缩放后重新编码，动画保留。
     """
     if upload is None:
@@ -194,22 +194,14 @@ def normalize_avatar(upload):
     has_alpha = image.mode in ('RGBA', 'LA') or (
         image.mode == 'P' and 'transparency' in image.info
     )
-    if has_alpha:
-        image = image.convert('RGBA')
-        image_format, suffix = 'PNG', '.png'
-    else:
-        image = image.convert('RGB')
-        image_format, suffix = 'JPEG', '.jpg'
+    image = image.convert('RGBA') if has_alpha else image.convert('RGB')
 
     image.thumbnail((AVATAR_MAX_EDGE, AVATAR_MAX_EDGE), Image.Resampling.LANCZOS)
 
     buffer = BytesIO()
-    if image_format == 'JPEG':
-        image.save(buffer, image_format, quality=88, optimize=True, progressive=True)
-    else:
-        image.save(buffer, image_format, optimize=True)
+    image.save(buffer, 'WEBP', quality=82, method=6)
 
-    return ContentFile(buffer.getvalue(), name=f'avatar{suffix}')
+    return ContentFile(buffer.getvalue(), name='avatar.webp')
 
 
 def delete_avatar_file(field_file):
