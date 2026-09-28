@@ -32,7 +32,7 @@ def deploy_info(request):
         "SITE_VERSION": "$VERSION",
         "DEPLOY_TIME": "$DEPLOY_TIME",
     }
-}
+
 PY
 
 echo "==> 检查文件变化..."
