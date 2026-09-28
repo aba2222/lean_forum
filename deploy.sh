@@ -69,7 +69,7 @@ set -e
 cd "$REMOTE_DIR"
 
 echo "==> Django check..."
-source ~/venv/bin/activate
+source ./venv/bin/activate
 python manage.py check
 
 echo "==> Django migrate..."
