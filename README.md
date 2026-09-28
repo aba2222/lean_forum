@@ -35,7 +35,32 @@ A lightweight forum system built with Django.
 
 - Python 3.10+
 
-### Local Development (venv recommended)
+### Local Development: one command (Windows)
+
+Double-click `dev.bat`, or from PowerShell:
+
+```powershell
+.\dev.ps1
+```
+
+It takes a fresh clone all the way to a running server: creates the virtualenv if
+missing (picking a 3.10+ interpreter on purpose — the `python` on your PATH is
+often an older one without Django), installs dependencies when they changed,
+generates and applies migrations, then serves on http://127.0.0.1:8000.
+
+```powershell
+.\dev.ps1 -Superuser        # also create an admin account (random password, printed)
+.\dev.ps1 -Port 9000 -Address 0.0.0.0   # different port, reachable from the LAN
+.\dev.ps1 -Test             # run the test suite only
+.\dev.ps1 -NoSetup          # don't touch the environment, just start
+```
+
+> Why this exists: the repo keeps `migrations/` in `.gitignore`, so a fresh clone
+> has **no migration files at all** and nothing can be created until you generate
+> them; and without `DEBUG=1` every asset under `/static/` (including the Markdown
+> editor) 404s. Both are easy to trip over on a first run.
+
+### Manual steps (other platforms, or if you want to see each step)
 
 ```bash
 git clone https://github.com/aba2222/lean_forum.git
@@ -48,12 +73,19 @@ source venv/bin/activate
 venv\Scripts\activate
 
 pip install -r requirements.txt
-python manage.py makemigrations
+
+# note the explicit app names, see below
+python manage.py makemigrations forum md_editor
 python manage.py migrate
 
 export DEBUG=1
 python manage.py runserver
 ```
+
+> `makemigrations` needs the explicit `forum md_editor` app labels. Without them,
+> Django **skips apps that don't have a `migrations` package yet** — which is
+> exactly the state of a fresh clone, so `forum` gets no tables and every page
+> fails with `no such table: forum_post`.
 
 Visit http://127.0.0.1:8000
 

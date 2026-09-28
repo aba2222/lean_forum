@@ -25,6 +25,7 @@ from forum.api import UserRegistrationSerializer
 from .utils import send_group_notification
 from forum.form import MDEditorCommentForm, MDEditorModelForm, CollectionForm, ProfileForm
 from forum.models import Comment, Item, Post, Rating, Collection, CollectionPost, Profile
+from forum.search import search_posts
 from forum.bots_manager import manager
 
 logger = logging.getLogger(__name__)
@@ -48,16 +49,17 @@ class PostListView(ListView):
         return context
 
     def get_queryset(self):
-       query = self.request.GET.get("q", "").strip()
-       if not query:
-           return Post.objects.all()
-       return Post.objects.filter(
-           Q(title__icontains=query) | Q(content__icontains=query)
-       )
+        # 帖子搜索走 FTS5；查询太短或索引不可用时，search_posts 内部自动回退 LIKE。
+        # 结果集与排序都和原来的 icontains 版本一致，只是更快。
+        return search_posts(self.request.GET.get('q', ''))
 
 @login_required
 def rate_item(request, item_id):
     item = get_object_or_404(Item, id=item_id)
+    user_rating = None
+    if request.user.is_authenticated:
+        user_rating = Rating.objects.filter(user=request.user, item=item).first()
+
     if request.method == 'POST':
         try:
             score = int(request.POST.get('score', ''))
@@ -67,14 +69,28 @@ def rate_item(request, item_id):
         if not 1 <= score <= 5:
             messages.error(request, '评分必须在 1-5 之间。')
             return redirect('rate_item', item_id=item.id)
-        Rating.objects.update_or_create(
+        _obj, created = Rating.objects.update_or_create(
             user=request.user,
             item=item,
             defaults={'score': score}
         )
+        if created:
+            messages.success(request, f'已为「{item.name}」打 {score} 星。')
+        else:
+            messages.success(request, f'已更新对「{item.name}」的评分为 {score} 星。')
         return redirect('index')
 
-    return render(request, 'forum/rate_item.html', {'name': item.name,'description': item.content_html})
+    avg = item.average_rating()
+    rating_count = item.rating_set.count()
+    # 模板里同时要用到 item.name 与正文，整对象一起传
+    return render(request, 'forum/rate_item.html', {
+        'item': item,
+        'average_rating': avg,
+        'rating_count': rating_count,
+        'user_rating': user_rating.score if user_rating else None,
+        'star_range': range(1, 6),
+    })
+
 
 @login_required
 def post_create(request):
@@ -104,37 +120,62 @@ def post_create(request):
 
     return render(request, 'forum/post_create.html', {'form': forms})
 
+
+def _post_detail_context(post, request, comment_form=None, collection=None, prev_post=None, next_post=None, all_cps=None):
+    Post.objects.filter(id=post.id).update(views=F('views') + 1)
+    post.refresh_from_db(fields=['views'])
+    forms = comment_form
+    if forms is None and request.user.is_authenticated:
+        forms = MDEditorCommentForm(user=request.user, post=post)
+
+    comments = post.comments.select_related('author').order_by('created_at')
+    paginator = Paginator(comments, 8)
+    page_obj = paginator.get_page(request.GET.get('page', 1))
+
+    return {
+        'post': post,
+        'collection': collection,
+        'collection_posts_all': all_cps,
+        'prev_post': prev_post,
+        'next_post': next_post,
+        'comments': page_obj,
+        'page_obj': page_obj,
+        'total_comments': paginator.count,
+        'forms': forms,
+        'can_delete': (post.author == request.user),
+    }
+
+
 class PostDetailView(View):
     def get(self, request, post_id):
         post = get_object_or_404(Post, id=post_id)
-        Post.objects.filter(id=post_id).update(views=F('views') + 1)
-        post.refresh_from_db(fields=['views'])
-        forms = None
-        if request.user.is_authenticated:
-            forms = MDEditorCommentForm(user=request.user, post=post)
-        
-        comments = post.comments.all().order_by('created_at')
-        paginator = Paginator(comments, 8)
-        page_obj = paginator.get_page(request.GET.get('page', 1))
-
-        return render(request, 'forum/post_detail.html', {'post': post,
-                                                          'comments': page_obj,
-                                                          'page_obj': page_obj,
-                                                          'total_comments': paginator.count,
-                                                          'forms' : forms,
-                                                          'can_delete' : (post.author == request.user)})
+        ctx = _post_detail_context(post, request)
+        return render(request, 'forum/post_detail.html', ctx)
 
     def post(self, request, post_id):
         post = get_object_or_404(Post, id=post_id)
-        if request.user.is_authenticated:
-            forms = MDEditorCommentForm(request.POST,  user=request.user, post=post)
-            forms.user = request.user
-            forms.post = post
-            if forms.is_valid():
-                forms.save()
-            else:
-                print(forms.errors)
-        return redirect('post_detail', post_id=post.id)
+        if not request.user.is_authenticated:
+            messages.warning(request, '请先登录后再发表评论。')
+            return redirect('login')
+        forms = MDEditorCommentForm(request.POST, user=request.user, post=post)
+        forms.user = request.user
+        forms.post = post
+        if forms.is_valid():
+            forms.save()
+            messages.success(request, '评论发布成功！')
+            return redirect('post_detail', post_id=post.id)
+        # 校验失败：回显已有内容 + messages，避免用户丢失输入
+        logger.warning(
+            "PostDetailView 评论表单校验失败: post=%s user=%s errors=%s",
+            post_id, request.user.id, forms.errors,
+        )
+        messages.error(request, '评论内容校验失败，请修正后重新提交。您已输入的内容已保留。')
+        for field, errs in forms.errors.items():
+            for err in errs:
+                messages.warning(request, f'[{field}] {err}')
+        ctx = _post_detail_context(post, request, comment_form=forms)
+        return render(request, 'forum/post_detail.html', ctx)
+
 
 class LoginView(View):
     def get(self, request):
@@ -302,6 +343,16 @@ def about_view(request):
     return render(request, "forum/about.html")
 
 
+# ---- Error handlers ----
+
+def custom_404_view(request, exception=None):
+    return render(request, "404.html", status=404)
+
+
+def custom_500_view(request, exception=None):
+    return render(request, "500.html", status=500)
+
+
 # ---- Collection views ----
 
 def collection_list(request):
@@ -453,33 +504,48 @@ def collection_post_detail(request, collection_id, post_id):
 
     prev_cp = collection.collection_posts.filter(order__lt=current_cp.order).last()
     next_cp = collection.collection_posts.filter(order__gt=current_cp.order).first()
+    all_cps = collection.collection_posts.select_related('post').all()
 
     forms = None
     if request.user.is_authenticated:
         forms = MDEditorCommentForm(user=request.user, post=post)
 
-    if request.method == 'POST' and request.user.is_authenticated:
+    if request.method == 'POST':
+        if not request.user.is_authenticated:
+            messages.warning(request, '请先登录后再发表评论。')
+            return redirect('login')
         forms = MDEditorCommentForm(request.POST, user=request.user, post=post)
         if forms.is_valid():
             forms.save()
-        return redirect('collection_post_detail', collection_id=collection.id, post_id=post.id)
+            messages.success(request, '评论发布成功！')
+            return redirect('collection_post_detail', collection_id=collection.id, post_id=post.id)
+        logger.warning(
+            "collection_post_detail 评论表单校验失败: collection=%s post=%s errors=%s",
+            collection_id, post_id, forms.errors,
+        )
+        messages.error(request, '评论内容校验失败，请修正后重新提交。您已输入的内容已保留。')
+        for field, errs in forms.errors.items():
+            for err in errs:
+                messages.warning(request, f'[{field}] {err}')
+        # 失败时走 render 回显
+        ctx = _post_detail_context(
+            post, request,
+            comment_form=forms,
+            collection=collection,
+            prev_post=prev_cp.post if prev_cp else None,
+            next_post=next_cp.post if next_cp else None,
+            all_cps=all_cps,
+        )
+        return render(request, 'forum/post_detail.html', ctx)
 
-    comments = post.comments.all().order_by('created_at')
-    paginator = Paginator(comments, 8)
-    page_obj = paginator.get_page(request.GET.get('page', 1))
-
-    return render(request, 'forum/post_detail.html', {
-        'post': post,
-        'collection': collection,
-        'collection_posts_all': collection.collection_posts.select_related('post').all(),
-        'prev_post': prev_cp.post if prev_cp else None,
-        'next_post': next_cp.post if next_cp else None,
-        'comments': page_obj,
-        'page_obj': page_obj,
-        'total_comments': paginator.count,
-        'forms': forms,
-        'can_delete': (post.author == request.user),
-    })
+    ctx = _post_detail_context(
+        post, request,
+        collection=collection,
+        prev_post=prev_cp.post if prev_cp else None,
+        next_post=next_cp.post if next_cp else None,
+        all_cps=all_cps,
+    )
+    return render(request, 'forum/post_detail.html', ctx)
 
 
 @login_required

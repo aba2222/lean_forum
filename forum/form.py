@@ -102,12 +102,18 @@ class ProfileForm(forms.ModelForm):
             'location': '所在地',
         }
         help_texts = {
-            'avatar': '支持 JPG / PNG / WebP，不超过 2 MB；会自动摆正方向并压缩到 512px 以内。',
+            'avatar': (
+                '支持 JPG / PNG / WebP / GIF，静态图不超过 2 MB，动图不超过 6 MB；'
+                '会自动摆正方向并压缩到 512px 以内，GIF 与 WebP 的动图会保留动画。'
+            ),
             'content': f'支持 Markdown，最多 {BIO_MAX_LENGTH} 字。',
         }
         widgets = {
             'avatar': forms.ClearableFileInput(
-                attrs={'accept': 'image/png,image/jpeg,image/webp', 'class': 'form-control'}
+                attrs={
+                    'accept': 'image/png,image/jpeg,image/webp,image/gif',
+                    'class': 'form-control',
+                }
             ),
             # content 沿用 md_editor 的 MDEditorWidget（MDTextFormField 自带），
             # 保证简介的 Markdown 编辑体验与发帖/评论完全一致
