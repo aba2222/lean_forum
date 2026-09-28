@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block title %}500 — 服务器出错了{% endblock %}
+
+{% block content %}
+  <div class="row justify-content-center py-5">
+    <div class="col-md-8 col-lg-6 text-center">
+      <div class="mb-4">
+        <div class="display-1 fw-bold text-warning mb-2" aria-hidden="true">500</div>
+        <h1 class="h3 mb-3">服务器出错了</h1>
+        <p class="text-muted mb-4">
+          服务器在处理您的请求时遇到了内部错误。管理员已收到通知，请稍后再试。
+        </p>
+      </div>
+
+      <div class="d-flex flex-wrap justify-content-center gap-2 mb-5">
+        <a href="{% url 'index' %}" class="btn btn-primary">
+          <span class="d-inline-flex align-items-center gap-1">
+            <span aria-hidden="true">{% include 'forum/icons/house.svg' %}</span>
+            <span>返回首页</span>
+          </span>
+        </a>
+        <button type="button" class="btn btn-outline-secondary" onclick="window.location.reload()">
+          <span class="d-inline-flex align-items-center gap-1">
+            <span aria-hidden="true">{% include 'forum/icons/arrow-clockwise.svg' %}</span>
+            <span>刷新重试</span>
+          </span>
+        </button>
+      </div>
+
+      <div class="card border-0 bg-body-tertiary shadow-sm">
+        <div class="card-body text-start">
+          <h2 class="h6 mb-3">如果问题持续出现：</h2>
+          <ul class="mb-0 text-muted small">
+            <li class="mb-1">记下您访问的页面地址和操作步骤</li>
+            <li>稍后再次尝试，问题可能已自动修复</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

@@ -57,3 +57,6 @@ if settings.SERVE_STATIC:
         ),
     ]
 
+# 自定义错误页面 handlers
+handler404 = 'forum.views.custom_404_view'
+handler500 = 'forum.views.custom_500_view'
