@@ -1,4 +1,3 @@
-```bash
 #!/usr/bin/env bash
 
 set -e
@@ -88,4 +87,3 @@ sudo systemctl is-active --quiet lean-forum
 echo
 echo "==> 部署成功！"
 EOF
-```
