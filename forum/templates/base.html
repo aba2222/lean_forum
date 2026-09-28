@@ -146,14 +146,30 @@
       }
 
       .flash-messages {
-        position: sticky;
-        top: 0.5rem;
+        position: fixed;
+        top: 1rem;
+        left: 50%;
+        transform: translateX(-50%);
+        width: min(500px, calc(100% - 2rem));
         z-index: 1050;
       }
 
       .flash-messages .alert {
-        margin-bottom: 0.5rem;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+
+        margin-bottom: 0.75rem;
+        padding: 0.85rem 1rem;
+
+        border: 1px solid var(--bs-border-color-translucent);
+        border-radius: 0.8rem;
+
+        box-shadow:
+          0 8px 24px rgba(0, 0, 0, 0.10),
+          0 2px 6px rgba(0, 0, 0, 0.05);
+
+        backdrop-filter: blur(10px);
       }
 
       .star {
